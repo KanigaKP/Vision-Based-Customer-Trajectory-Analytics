@@ -4,8 +4,8 @@
 
 project:
   name: "Vision-Based Customer Trajectory Analytics"
-  version: "0.1.0"
-  phase: 2
+  version: "0.3.0"
+  phase: 3
 
 paths:
   data_dir: "data/"
@@ -37,3 +37,15 @@ video:
       max_mean: 230.0            # Warning if mean brightness > 230 (overexposed)
     sharpness:
       min_laplacian_var: 100.0   # Warning if Laplacian variance < 100 (blurry)
+
+# YOLO11 Person Detection Settings (ONNX Runtime CPU Engine)
+# NOTE: Confidence and IoU thresholds are configurable engineering parameters,
+# NOT scientifically validated optimal values.
+detection:
+  model_path: "data/models/yolo11n.onnx"
+  input_width: 640
+  input_height: 640
+  conf_threshold: 0.40           # Confidence score threshold for person filtering
+  iou_threshold: 0.45            # Non-Maximum Suppression (NMS) IoU threshold
+  target_class_id: 0             # COCO person class ID (0)
+  target_class_name: "person"

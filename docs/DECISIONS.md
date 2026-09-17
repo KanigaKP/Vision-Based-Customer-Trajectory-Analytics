@@ -170,3 +170,15 @@ This document records key architectural and technical decisions made throughout 
 | **Decision** | Build `src/video/` package (`VideoInspector`, `QualityEvaluator`, `FrameSampler`) with configurable engineering warning thresholds in `config.yaml` |
 | **Rationale** | Video quality parameters (resolution, FPS, mean brightness, Laplacian variance sharpness) provide early detection of input video anomalies without throwing unhandled OpenCV exceptions or claiming universal physical limits. Frame sampling uses a generator pattern to keep memory consumption low. |
 | **Alternatives** | Hardcoded universal quality thresholds — rejected; quality requirements vary per camera setup, so thresholds must remain configurable in `config.yaml`. |
+
+---
+
+## DEC-015 — YOLO11 ONNX Person Detector Architecture & Letterbox NMS Pipeline
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 3 |
+| **Decision** | Implement `YOLO11PersonDetector` in `src/detection/` using ONNX Runtime CPU with letterbox preprocessing and vectorised NMS post-processing, filtering exclusively for COCO class `0` (`person`) |
+| **Rationale** | Letterbox preprocessing preserves image aspect ratios without spatial distortion. Filtering output tensor row 4 extracts person category scores, and OpenCV `cv2.dnn.NMSBoxes` eliminates duplicate overlaps. Operates with zero PyTorch runtime dependencies. |
+| **Alternatives** | Direct stretch resize (rejected due to spatial distortion); PyTorch runtime wrapper (rejected due to Windows Smart App Control DLL blocking). |
