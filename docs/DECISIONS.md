@@ -146,3 +146,16 @@ This document records key architectural and technical decisions made throughout 
 | **Decision** | Image-to-floor-plane homography is feasible for zone analytics |
 | **Rationale** | Tested on MOT17-04 frame. Near-field accuracy is excellent; far-field degrades with deep perspective. The controlled college footage (more overhead, shorter depth) should give better results. |
 | **Alternatives** | Skip homography and work in pixel coordinates — rejected; floor-plane mapping is essential for meaningful spatial analytics. |
+
+---
+
+## DEC-013 — ONNX Runtime CPU Inference Path (`ONNX_RUNTIME_CPU_PATH`)
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 1.5 |
+| **Decision** | Adopt `onnxruntime` CPU execution path (`yolo11n.onnx`) for object detection |
+| **Rationale** | PyTorch's native `torch.dll` triggers Windows Smart App Control `[WinError 4551]`. `onnxruntime` 1.30.0 runs cleanly without security errors, achieving 86.5 ms (~11.6 FPS) single-frame CPU detection latency. Completely avoids disabling OS security settings or changing Python versions. |
+| **Alternatives** | Disable Smart App Control (rejected per security directive); Python version migration (unnecessary since ONNX Runtime works in Python 3.14). |
+
