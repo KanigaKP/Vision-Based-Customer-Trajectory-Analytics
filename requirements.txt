@@ -8,6 +8,7 @@ opencv-python
 pandas
 matplotlib
 pyyaml
+scipy
 onnxruntime
 huggingface_hub
 pytest

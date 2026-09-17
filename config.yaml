@@ -4,8 +4,8 @@
 
 project:
   name: "Vision-Based Customer Trajectory Analytics"
-  version: "0.3.0"
-  phase: 3
+  version: "0.4.0"
+  phase: 4
 
 paths:
   data_dir: "data/"
@@ -49,3 +49,14 @@ detection:
   iou_threshold: 0.45            # Non-Maximum Suppression (NMS) IoU threshold
   target_class_id: 0             # COCO person class ID (0)
   target_class_name: "person"
+
+# ByteTrack Multi-Object Tracking Settings
+# NOTE: Track IDs are temporary session-local identifiers.
+# There is NO re-identification or cross-session tracking.
+tracking:
+  track_high_thresh: 0.50        # High confidence threshold for 1st association
+  track_low_thresh: 0.10         # Low confidence threshold for 2nd association
+  new_track_thresh: 0.50         # Threshold to initialize new tracks
+  match_thresh: 0.80             # Max IoU distance for 1st association (1 - IoU)
+  low_match_thresh: 0.50         # Max IoU distance for 2nd association (1 - IoU)
+  max_time_lost_sec: 2.0         # Max time (seconds) to keep a lost track before removal
