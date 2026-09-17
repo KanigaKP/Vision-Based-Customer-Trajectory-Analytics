@@ -85,3 +85,64 @@ This document records key architectural and technical decisions made throughout 
 | **Decision** | Do not use Docker, cloud services, Redis, Kafka, or any enterprise infrastructure |
 | **Rationale** | This is an academic research prototype. The environment is a single Windows machine. Adding infrastructure would add complexity without benefit. |
 | **Alternatives** | N/A |
+
+---
+
+## DEC-008 — CPU-Only Inference
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 1 |
+| **Decision** | Run YOLO11 and PyTorch in CPU-only mode |
+| **Rationale** | No NVIDIA GPU is present. Only an AMD Radeon integrated GPU (512 MB VRAM) exists. CUDA is not available. CPU-only inference is acceptable for processing recorded video in an academic prototype. |
+| **Alternatives** | Use DirectML or ONNX Runtime with AMD GPU — may be explored if CPU inference is too slow. |
+
+---
+
+## DEC-009 — Smart App Control Blocker (CRITICAL)
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 1 |
+| **Decision** | User must disable Windows Smart App Control to allow PyTorch DLLs to load |
+| **Rationale** | Windows Smart App Control (WDAC) blocks unsigned DLLs. PyTorch's `torch.dll` is unsigned and fails to load with `[WinError 4551]`. This affects ALL machines with SAC enabled, regardless of path. There is no per-app bypass. |
+| **Alternatives** | None that avoid disabling SAC. Once disabled, SAC cannot be re-enabled without a Windows reinstall. |
+| **Impact** | BLOCKS PyTorch/YOLO11 until resolved |
+
+---
+
+## DEC-010 — MOT17-04-FRCNN as Primary Evaluation Sequence
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 1 |
+| **Decision** | Use MOT17-04-FRCNN as the primary tracking evaluation sequence |
+| **Rationale** | Static camera, 1920×1080, 30 FPS, 1050 frames, 141 unique tracks, high pedestrian density. Ideal for MOTA/IDF1 evaluation. |
+| **Alternatives** | MOT17-09 (indoor) — could be added as a secondary sequence. |
+
+---
+
+## DEC-011 — MERL Dataset Role: Demonstration Only
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 1 |
+| **Decision** | Use MERL Shopping Dataset for retail-context demonstration only. Do NOT compute MOTA/IDF1 from MERL. |
+| **Rationale** | MERL provides action annotations (reach, retract, inspect) — NOT continuous identity tracking ground truth. Computing tracking metrics from action labels would be methodologically invalid. |
+| **Alternatives** | N/A — this is a constraint of the dataset, not a choice. |
+
+---
+
+## DEC-012 — Homography Feasibility Confirmed
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 1 |
+| **Decision** | Image-to-floor-plane homography is feasible for zone analytics |
+| **Rationale** | Tested on MOT17-04 frame. Near-field accuracy is excellent; far-field degrades with deep perspective. The controlled college footage (more overhead, shorter depth) should give better results. |
+| **Alternatives** | Skip homography and work in pixel coordinates — rejected; floor-plane mapping is essential for meaningful spatial analytics. |
