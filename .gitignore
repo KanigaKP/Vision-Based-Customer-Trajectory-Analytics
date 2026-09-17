@@ -1,0 +1,65 @@
+# ─── Virtual Environment ───
+venv/
+.venv/
+env/
+
+# ─── Python ───
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# ─── IDE / Editor ───
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ─── OS ───
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Data & Model Weights ───
+data/mot17/*
+data/merl/*
+data/controlled/*
+!data/mot17/.gitkeep
+!data/merl/.gitkeep
+!data/controlled/.gitkeep
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.pt
+*.pth
+*.onnx
+*.engine
+*.weights
+
+# ─── Outputs ───
+outputs/videos/*
+outputs/trajectories/*
+outputs/heatmaps/*
+outputs/reports/*
+!outputs/videos/.gitkeep
+!outputs/trajectories/.gitkeep
+!outputs/heatmaps/.gitkeep
+!outputs/reports/.gitkeep
+
+# ─── Database ───
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Misc ───
+.env
+*.log
+*.bak

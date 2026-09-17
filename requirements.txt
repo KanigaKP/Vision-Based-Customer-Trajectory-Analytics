@@ -1,0 +1,14 @@
+# ============================================================
+# Vision-Based Customer Trajectory Analytics
+# Phase 0 — Foundational Dependencies Only
+# ============================================================
+# These are the minimal dependencies needed to validate the
+# environment and support the core scientific stack.
+# Phase-specific dependencies (ultralytics, streamlit, etc.)
+# will be added in their respective phases.
+
+numpy
+opencv-python
+pandas
+matplotlib
+pyyaml

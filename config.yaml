@@ -1,0 +1,18 @@
+# ============================================================
+# Vision-Based Customer Trajectory Analytics — Configuration
+# ============================================================
+# This file will be extended in later phases.
+# Phase 0: Placeholder structure only.
+
+project:
+  name: "Vision-Based Customer Trajectory Analytics"
+  version: "0.0.1"
+  phase: 0
+
+paths:
+  data_dir: "data/"
+  output_dir: "outputs/"
+  database: "outputs/analytics.db"
+
+# Future phases will add:
+# detection, tracking, spatial, analytics, dashboard settings
