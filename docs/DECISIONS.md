@@ -194,3 +194,15 @@ This document records key architectural and technical decisions made throughout 
 | **Decision** | Implement `ByteTracker` in `src/tracking/` using 2-stage IoU-Hungarian bipartite matching (`scipy.optimize.linear_sum_assignment`) and 8-state Kalman filtering, defining track IDs strictly as temporary session-local identifiers |
 | **Rationale** | ByteTrack preserves both high and low-confidence detections to maintain track continuity across temporal occlusions. Track IDs are session-local visual tracking labels, NOT biometric, facial, or cross-session customer identities. Operates with minimal CPU overhead (0.50 ms per frame). |
 | **Alternatives** | Re-identification / appearance embeddings (rejected per project scope boundary); DeepSORT / BoT-SORT (rejected per specific ByteTrack requirement). |
+
+---
+
+## DEC-017 — Spatial Homography Floor-Plane Transformation & Bottom-Center Trajectory Extraction
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 5 |
+| **Decision** | Implement `HomographyCalibrator` in `src/spatial/` and `TrajectoryExtractor` in `src/trajectory/`, transforming bottom-center image points $[(x_1+x_2)/2, y_2]$ to dataset-specific 2D floor-plane coordinates while preserving original image coordinates |
+| **Rationale** | The bottom-center of the bounding box represents the contact point of a person's feet with the floor plane, where 2D homography is geometrically valid. Preserving original image coordinates alongside floor coordinates enables debugging and overlays. Separate calibrations per camera view enforce dataset independence. |
+| **Alternatives** | Bounding box center coordinates (rejected due to height/posture variation); single global homography matrix (rejected because homography is camera-dependent). |

@@ -4,8 +4,8 @@
 
 project:
   name: "Vision-Based Customer Trajectory Analytics"
-  version: "0.4.0"
-  phase: 4
+  version: "0.5.0"
+  phase: 5
 
 paths:
   data_dir: "data/"
@@ -60,3 +60,59 @@ tracking:
   match_thresh: 0.80             # Max IoU distance for 1st association (1 - IoU)
   low_match_thresh: 0.50         # Max IoU distance for 2nd association (1 - IoU)
   max_time_lost_sec: 2.0         # Max time (seconds) to keep a lost track before removal
+
+# Spatial Homography Calibration Settings
+# NOTE: Homography is CAMERA & SCENE DEPENDENT. Separate calibrations are required for each camera view.
+# Coordinates represent local grid metres or normalized ground-plane units.
+homography:
+  mot17_04:
+    unit: "metres"
+    coordinate_type: "normalized_ground_grid"
+    image_points:
+      - [480.0, 580.0]    # P1: near-left ground
+      - [1050.0, 540.0]   # P2: near-center ground
+      - [1450.0, 480.0]   # P3: near-right ground
+      - [680.0, 350.0]    # P4: far-center ground
+    floor_points:
+      - [0.0, 8.0]
+      - [6.0, 8.0]
+      - [10.0, 8.0]
+      - [3.0, 0.0]
+    check_points:
+      image:
+        - [760.0, 450.0]   # CP1
+      expected_floor:
+        - [4.08, 8.0]
+
+  merl:
+    unit: "normalized_units"
+    coordinate_type: "aisle_ground_grid"
+    image_points:
+      - [150.0, 600.0]    # P1: near-left aisle floor
+      - [750.0, 600.0]    # P2: near-right aisle floor
+      - [700.0, 350.0]    # P3: far-right aisle floor
+      - [200.0, 350.0]    # P4: far-left aisle floor
+    floor_points:
+      - [0.0, 6.0]
+      - [10.0, 6.0]
+      - [10.0, 0.0]
+      - [0.0, 0.0]
+    check_points:
+      image:
+        - [450.0, 475.0]
+      expected_floor:
+        - [5.0, 3.0]
+
+  college_controlled:
+    unit: "metres"
+    coordinate_type: "measured_floor_grid"
+    image_points:
+      - [100.0, 500.0]
+      - [500.0, 500.0]
+      - [500.0, 200.0]
+      - [100.0, 200.0]
+    floor_points:
+      - [0.0, 5.0]
+      - [4.0, 5.0]
+      - [4.0, 0.0]
+      - [0.0, 0.0]
