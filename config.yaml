@@ -1,18 +1,39 @@
 # ============================================================
 # Vision-Based Customer Trajectory Analytics — Configuration
 # ============================================================
-# This file will be extended in later phases.
-# Phase 0: Placeholder structure only.
 
 project:
   name: "Vision-Based Customer Trajectory Analytics"
-  version: "0.0.1"
-  phase: 0
+  version: "0.1.0"
+  phase: 2
 
 paths:
   data_dir: "data/"
   output_dir: "outputs/"
+  reports_dir: "outputs/reports/"
   database: "outputs/analytics.db"
+  models_dir: "data/models/"
 
-# Future phases will add:
-# detection, tracking, spatial, analytics, dashboard settings
+# Video Preprocessing & Quality Verification Settings
+# NOTE: Quality thresholds are configurable engineering warning thresholds,
+# NOT scientifically validated universal limits.
+video:
+  allowed_extensions:
+    - ".mp4"
+    - ".avi"
+    - ".mov"
+    - ".mkv"
+
+  sampling:
+    target_fps: 5.0              # Default frame sampling rate (FPS)
+    max_sampled_frames: 300      # Safety cap for sampled frames per run
+
+  quality_thresholds:
+    min_width: 640               # Warning if width < 640px
+    min_height: 480              # Warning if height < 480px
+    min_fps: 10.0                # Warning if FPS < 10.0
+    brightness:
+      min_mean: 40.0             # Warning if mean brightness < 40 (too dark)
+      max_mean: 230.0            # Warning if mean brightness > 230 (overexposed)
+    sharpness:
+      min_laplacian_var: 100.0   # Warning if Laplacian variance < 100 (blurry)

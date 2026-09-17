@@ -159,3 +159,14 @@ This document records key architectural and technical decisions made throughout 
 | **Rationale** | PyTorch's native `torch.dll` triggers Windows Smart App Control `[WinError 4551]`. `onnxruntime` 1.30.0 runs cleanly without security errors, achieving 86.5 ms (~11.6 FPS) single-frame CPU detection latency. Completely avoids disabling OS security settings or changing Python versions. |
 | **Alternatives** | Disable Smart App Control (rejected per security directive); Python version migration (unnecessary since ONNX Runtime works in Python 3.14). |
 
+---
+
+## DEC-014 — Modular Video Preprocessing & Configurable Quality Warning Thresholds
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-17 |
+| **Phase** | 2 |
+| **Decision** | Build `src/video/` package (`VideoInspector`, `QualityEvaluator`, `FrameSampler`) with configurable engineering warning thresholds in `config.yaml` |
+| **Rationale** | Video quality parameters (resolution, FPS, mean brightness, Laplacian variance sharpness) provide early detection of input video anomalies without throwing unhandled OpenCV exceptions or claiming universal physical limits. Frame sampling uses a generator pattern to keep memory consumption low. |
+| **Alternatives** | Hardcoded universal quality thresholds — rejected; quality requirements vary per camera setup, so thresholds must remain configurable in `config.yaml`. |
