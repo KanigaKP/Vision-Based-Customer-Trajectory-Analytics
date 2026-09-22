@@ -22,6 +22,7 @@ class TrajectoryPoint:
     image_y: float                 # Bottom-center y = y2
     floor_x: Optional[float] = None # Transformed floor coordinate x
     floor_y: Optional[float] = None # Transformed floor coordinate y
+    zone_id: Optional[str] = None   # Spatial zone assignment (None if outside defined zones)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

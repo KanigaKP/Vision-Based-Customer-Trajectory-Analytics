@@ -206,3 +206,16 @@ This document records key architectural and technical decisions made throughout 
 | **Decision** | Implement `HomographyCalibrator` in `src/spatial/` and `TrajectoryExtractor` in `src/trajectory/`, transforming bottom-center image points $[(x_1+x_2)/2, y_2]$ to dataset-specific 2D floor-plane coordinates while preserving original image coordinates |
 | **Rationale** | The bottom-center of the bounding box represents the contact point of a person's feet with the floor plane, where 2D homography is geometrically valid. Preserving original image coordinates alongside floor coordinates enables debugging and overlays. Separate calibrations per camera view enforce dataset independence. |
 | **Alternatives** | Bounding box center coordinates (rejected due to height/posture variation); single global homography matrix (rejected because homography is camera-dependent). |
+
+---
+
+## DEC-018 — Manual Store Zone Definition & Temporal Hysteresis Boundary Handling
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-22 |
+| **Phase** | 6 |
+| **Decision** | Implement `Zone` dataclass, `ZoneConfig` helper, `ZoneEvaluator` in `src/analytics/`, and `ZoneVisualizer` in `src/spatial/zone_visualizer.py`. Define zones in 2D floor-plane coordinates and apply a configurable temporal hysteresis buffer ($N=3$ default) for boundary transition stability |
+| **Rationale** | Defining zones in floor-plane coordinate space ensures scale and perspective invariance across different camera angles. Temporal hysteresis buffer ($N=3$ frames) eliminates boundary jitter when trajectory points pass near polygon borders. `homography.py` remains focused on image-to-floor coordinate transformation, maintaining clear architectural separation of concerns. Points outside defined zones explicitly use `zone_id = None`. |
+| **Alternatives** | Pixel-space zone definitions (rejected due to distortion across camera angles); zero hysteresis window (rejected due to boundary jitter); modifying `homography.py` to include zone visualization (rejected to preserve Phase 5 separation of concerns). |
+

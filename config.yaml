@@ -4,8 +4,8 @@
 
 project:
   name: "Vision-Based Customer Trajectory Analytics"
-  version: "0.5.0"
-  phase: 5
+  version: "0.6.0"
+  phase: 6
 
 paths:
   data_dir: "data/"
@@ -116,3 +116,72 @@ homography:
       - [4.0, 5.0]
       - [4.0, 0.0]
       - [0.0, 0.0]
+
+# Spatial Zone Definitions & Hysteresis Settings
+# NOTE: Zones are defined in 2D floor-coordinate space (meters/grid units),
+# matching the output space of HomographyCalibrator.
+# Hysteresis window (N frames) prevents boundary jitter during transitions.
+# N=3 is a configurable engineering default, NOT a scientifically validated optimal value.
+zones:
+  hysteresis_window: 3
+
+  merl:
+    - zone_id: "shelf_a"
+      name: "Shelf A (Snacks & Beverages)"
+      polygon:
+        - [0.5, 1.0]
+        - [4.0, 1.0]
+        - [4.0, 5.0]
+        - [0.5, 5.0]
+      color: "#3498db"
+      description: "Left product shelf display section"
+
+    - zone_id: "shelf_b"
+      name: "Shelf B (Produce & Dairy)"
+      polygon:
+        - [6.0, 1.0]
+        - [9.5, 1.0]
+        - [9.5, 5.0]
+        - [6.0, 5.0]
+      color: "#2ecc71"
+      description: "Right product shelf display section"
+
+    - zone_id: "main_aisle"
+      name: "Central Aisle"
+      polygon:
+        - [4.0, 1.0]
+        - [6.0, 1.0]
+        - [6.0, 5.0]
+        - [4.0, 5.0]
+      color: "#f39c12"
+      description: "Main central pedestrian walk aisle"
+
+    - zone_id: "checkout"
+      name: "Checkout Counter Area"
+      polygon:
+        - [0.0, 0.0]
+        - [10.0, 0.0]
+        - [10.0, 1.0]
+        - [0.0, 1.0]
+      color: "#e74c3c"
+      description: "Front checkout & billing zone"
+
+  mot17_04:
+    - zone_id: "zone_north"
+      name: "North Corridor Zone"
+      polygon:
+        - [0.0, 0.0]
+        - [10.0, 0.0]
+        - [10.0, 4.0]
+        - [0.0, 4.0]
+      color: "#9b59b6"
+
+    - zone_id: "zone_south"
+      name: "South Corridor Zone"
+      polygon:
+        - [0.0, 4.0]
+        - [10.0, 4.0]
+        - [10.0, 8.0]
+        - [0.0, 8.0]
+      color: "#1abc9c"
+

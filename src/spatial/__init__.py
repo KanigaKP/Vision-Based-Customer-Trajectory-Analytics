@@ -10,10 +10,12 @@ from src.spatial.homography import (
     visualize_correspondences,
     visualize_floor_trajectories
 )
+from src.spatial.zone_visualizer import visualize_zones_and_trajectories
 
 __all__ = [
     "HomographyCalibrator",
     "HomographyDiagnostics",
     "visualize_correspondences",
     "visualize_floor_trajectories",
+    "visualize_zones_and_trajectories",
 ]
