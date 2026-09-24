@@ -4,8 +4,8 @@
 
 project:
   name: "Vision-Based Customer Trajectory Analytics"
-  version: "0.6.0"
-  phase: 6
+  version: "0.7.0"
+  phase: 7
 
 paths:
   data_dir: "data/"

@@ -219,3 +219,16 @@ This document records key architectural and technical decisions made throughout 
 | **Rationale** | Defining zones in floor-plane coordinate space ensures scale and perspective invariance across different camera angles. Temporal hysteresis buffer ($N=3$ frames) eliminates boundary jitter when trajectory points pass near polygon borders. `homography.py` remains focused on image-to-floor coordinate transformation, maintaining clear architectural separation of concerns. Points outside defined zones explicitly use `zone_id = None`. |
 | **Alternatives** | Pixel-space zone definitions (rejected due to distortion across camera angles); zero hysteresis window (rejected due to boundary jitter); modifying `homography.py` to include zone visualization (rejected to preserve Phase 5 separation of concerns). |
 
+---
+
+## DEC-019 — Footfall Analytics Metric Definitions & Event Extraction Architecture
+
+| Field | Value |
+|---|---|
+| **Date** | 2026-09-24 |
+| **Phase** | 7 |
+| **Decision** | Implement Footfall Analytics in `src/analytics/footfall.py` interpreting pre-assigned `TrajectoryPoint.zone_id` sequences into distinct metrics: unique tracks per zone, zone entry events, contiguous zone visits, basic visit durations, per-frame occupancy, and lightweight zone-to-zone transition matrix |
+| **Rationale** | Decouples spatial evaluation (Phase 6) from discrete temporal event interpretation (Phase 7). Enforces strict mathematical distinctions between unique tracks, entry events, contiguous visits, and occupancy. Acknowledges track-fragmentation bias and sampling constraints while explicitly documenting that tracker IDs are session-local rather than verified customer identities. Defers SQLite, heatmaps, and layout optimization to subsequent phases. |
+| **Alternatives** | Conflating unique tracks and entries (rejected due to bias on re-entrant visits); re-evaluating PIP within footfall (rejected to prevent redundant computation and architectural coupling); introducing SQLite prematurely (rejected to keep scope minimal and memory-efficient). |
+
+
