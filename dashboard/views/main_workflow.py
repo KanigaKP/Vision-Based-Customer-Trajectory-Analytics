@@ -1112,7 +1112,16 @@ def render_main_workflow(reports_dir: str = "outputs/reports") -> None:
             st.session_state["studio_selected_zone"] = selected_zone
 
         # 3. Synchronized Video Player + Floor Diagram
-        col_cam, col_flr = st.columns(2 if (show_cam and show_floor) else 1)
+        if show_cam and show_floor:
+            col_cam, col_flr = st.columns(2)
+        elif show_cam:
+            col_cam = st.container()
+            col_flr = None
+        elif show_floor:
+            col_cam = None
+            col_flr = st.container()
+        else:
+            col_cam = col_flr = None
 
         if show_cam:
             with col_cam:

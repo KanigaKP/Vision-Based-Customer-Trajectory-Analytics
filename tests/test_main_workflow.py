@@ -75,3 +75,95 @@ def test_main_workflow_apptest_stage_navigation():
     at_stage8.run(timeout=30)
     assert not at_stage8.exception
     assert "Results: Analyse Another Recording" in [s.value for s in at_stage8.subheader]
+
+
+def test_main_workflow_viewport_mode_both_panels():
+    """Verify Stage 6 renders both camera player and floor map when 'Both Panels' is selected."""
+    app_path = str(Path(__file__).resolve().parent.parent / "dashboard" / "app.py")
+    at = AppTest.from_file(app_path)
+    at.session_state["authenticated_user"] = "test_examiner"
+    at.query_params["view"] = "workflow"
+    at.query_params["stage"] = "6"
+    at.session_state["workflow_viewport_mode"] = "Both Panels"
+    at.run(timeout=30)
+
+    assert not at.exception
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" in mds
+    assert "Floor Map & 3D Analytical Studio" in mds
+
+
+def test_main_workflow_viewport_mode_camera_view():
+    """Verify Stage 6 renders camera player and hides floor map when 'Camera View' is selected."""
+    app_path = str(Path(__file__).resolve().parent.parent / "dashboard" / "app.py")
+    at = AppTest.from_file(app_path)
+    at.session_state["authenticated_user"] = "test_examiner"
+    at.query_params["view"] = "workflow"
+    at.query_params["stage"] = "6"
+    at.session_state["workflow_viewport_mode"] = "Camera View"
+    at.run(timeout=30)
+
+    assert not at.exception
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" in mds
+    assert "Floor Map & 3D Analytical Studio" not in mds
+
+
+def test_main_workflow_viewport_mode_floor_map():
+    """Verify Stage 6 renders floor map and hides camera player when 'Floor Map' is selected."""
+    app_path = str(Path(__file__).resolve().parent.parent / "dashboard" / "app.py")
+    at = AppTest.from_file(app_path)
+    at.session_state["authenticated_user"] = "test_examiner"
+    at.query_params["view"] = "workflow"
+    at.query_params["stage"] = "6"
+    at.session_state["workflow_viewport_mode"] = "Floor Map"
+    at.run(timeout=30)
+
+    assert not at.exception
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" not in mds
+    assert "Floor Map & 3D Analytical Studio" in mds
+
+
+def test_main_workflow_viewport_mode_dynamic_switching():
+    """Verify dynamically switching between viewport modes in Stage 6 without raising exceptions."""
+    app_path = str(Path(__file__).resolve().parent.parent / "dashboard" / "app.py")
+    at = AppTest.from_file(app_path)
+    at.session_state["authenticated_user"] = "test_examiner"
+    at.query_params["view"] = "workflow"
+    at.query_params["stage"] = "6"
+    at.run(timeout=30)
+    assert not at.exception
+
+    # Default: Both Panels
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" in mds
+    assert "Floor Map & 3D Analytical Studio" in mds
+
+    # Switch to Camera View
+    radio_viewport = [r for r in at.radio if r.key == "workflow_viewport_mode"][0]
+    radio_viewport.set_value("Camera View")
+    at.run(timeout=30)
+    assert not at.exception
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" in mds
+    assert "Floor Map & 3D Analytical Studio" not in mds
+
+    # Switch to Floor Map
+    radio_viewport = [r for r in at.radio if r.key == "workflow_viewport_mode"][0]
+    radio_viewport.set_value("Floor Map")
+    at.run(timeout=30)
+    assert not at.exception
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" not in mds
+    assert "Floor Map & 3D Analytical Studio" in mds
+
+    # Switch back to Both Panels
+    radio_viewport = [r for r in at.radio if r.key == "workflow_viewport_mode"][0]
+    radio_viewport.set_value("Both Panels")
+    at.run(timeout=30)
+    assert not at.exception
+    mds = " ".join([m.value for m in at.markdown])
+    assert "Synchronized Video Player" in mds
+    assert "Floor Map & 3D Analytical Studio" in mds
+
