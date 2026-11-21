@@ -2,8 +2,9 @@
 venv/
 .venv/
 env/
+ENV/
 
-# ─── Python ───
+# ─── Python Bytecode & Build ───
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,7 +14,7 @@ dist/
 build/
 *.whl
 
-# ─── IDE / Editor ───
+# ─── IDE & OS ───
 .vscode/
 .idea/
 *.swp
@@ -21,19 +22,35 @@ build/
 *~
 .project
 .settings/
-
-# ─── OS ───
 .DS_Store
 Thumbs.db
 Desktop.ini
 
-# ─── Data & Model Weights ───
+# ─── Security & Authentication (Strictly Excluded) ───
+outputs/.auth/
+*.env
+.env
+.env.*
+*.pem
+*.key
+*.cert
+*.crt
+*_token*
+*secret*
+
+# ─── External Datasets & Pilot Workbooks (Preserved Locally) ───
+data/external/
+data/evaluation_pilot/
 data/mot17/*
-data/merl/*
-data/controlled/*
 !data/mot17/.gitkeep
-!data/merl/.gitkeep
+data/controlled/*
 !data/controlled/.gitkeep
+data/merl/*
+!data/merl/.gitkeep
+data/models/*
+!data/models/.gitkeep
+
+# ─── Binary Model Weights & Video Files ───
 *.mp4
 *.avi
 *.mov
@@ -43,8 +60,22 @@ data/controlled/*
 *.onnx
 *.engine
 *.weights
+*.zip
+*.tar
+*.gz
 
-# ─── Outputs ───
+# ─── Local Review Documentation & Audits (Preserved Locally) ───
+KP_FINALL_DOC.docx
+docs/browser_acceptance_evidence/
+docs/design_prototype/
+docs/evaluation/
+docs/presentation/
+docs/review_closure_2026_11_08/
+docs/verified_linked_workspace/
+docs/verified_spatial_studio/
+docs/workflow_demonstration_evidence/
+
+# ─── Output Artifacts & Runs ───
 outputs/videos/*
 outputs/trajectories/*
 outputs/heatmaps/*
@@ -53,13 +84,18 @@ outputs/reports/*
 !outputs/trajectories/.gitkeep
 !outputs/heatmaps/.gitkeep
 !outputs/reports/.gitkeep
+outputs/reports/uploaded_runs/
 
-# ─── Database ───
+# ─── Database & Storage ───
 *.db
 *.sqlite
 *.sqlite3
 
-# ─── Misc ───
-.env
+# ─── Logs & Caches ───
 *.log
 *.bak
+*.tmp
+.pytest_cache/
+scratch/
+submission/
+.playwright-cli/

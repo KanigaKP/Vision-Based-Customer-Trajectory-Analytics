@@ -100,6 +100,31 @@ def test_homography_trajectory_transformation(valid_calibration_points):
     assert transformed_traj.points[1].floor_y == pytest.approx(10.0, abs=1e-2)
 
 
+def test_homography_trajectory_transformation_with_missing_image_coords(valid_calibration_points):
+    src, dst = valid_calibration_points
+    calibrator = HomographyCalibrator(image_points=src, floor_points=dst, unit="metres")
+
+    traj = Trajectory(track_id=99)
+    p1 = TrajectoryPoint(track_id=99, frame_idx=1, timestamp_sec=0.0, image_x=None, image_y=None, floor_x=5.5, floor_y=6.5)
+    p2 = TrajectoryPoint(track_id=99, frame_idx=2, timestamp_sec=0.2, image_x=100.0, image_y=100.0)
+    traj.add_point(p1)
+    traj.add_point(p2)
+
+    transformed_traj = calibrator.transform_trajectory(traj)
+
+    assert transformed_traj.points[0].image_x is None
+    assert transformed_traj.points[0].image_y is None
+    # Pre-existing floor coords must be preserved without distortion
+    assert transformed_traj.points[0].floor_x == 5.5
+    assert transformed_traj.points[0].floor_y == 6.5
+    # Valid image point transformed correctly
+    assert transformed_traj.points[1].image_x == 100.0
+    assert transformed_traj.points[1].image_y == 100.0
+    assert transformed_traj.points[1].floor_x == pytest.approx(10.0, abs=1e-2)
+    assert transformed_traj.points[1].floor_y == pytest.approx(10.0, abs=1e-2)
+
+
+
 def test_homography_from_config():
     with open("config.yaml", "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)

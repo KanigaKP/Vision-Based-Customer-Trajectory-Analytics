@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Direction A Visual Single-Camera Setup</title>
+<style>
+  :root {
+    --teal-primary: #0D9488;
+    --teal-hover: #0F766E;
+    --teal-light: #F0FDFA;
+    --teal-border: #99F6E4;
+    --slate-900: #0F172A;
+    --slate-800: #1E293B;
+    --slate-700: #334155;
+    --slate-200: #E2E8F0;
+    --slate-100: #F1F5F9;
+    --slate-50: #F8FAFC;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --p1-color: #EF4444;
+    --p2-color: #F59E0B;
+    --p3-color: #10B981;
+    --p4-color: #3B82F6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #FFFFFF;
+    color: var(--text-primary);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .editor-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border: 1px solid var(--slate-200);
+    border-radius: 8px;
+    background: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--slate-50);
+    border-bottom: 1px solid var(--slate-200);
+    gap: 8px;
+  }
+
+  .tab-group {
+    display: inline-flex;
+    background: var(--slate-200);
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .tab-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .tab-btn.active {
+    background: #FFFFFF;
+    color: var(--teal-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+
+  .tool-status {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--slate-100);
+    color: var(--slate-700);
+  }
+
+  /* Canvas viewport */
+  .canvas-viewport {
+    position: relative;
+    width: 100%;
+    background: var(--slate-900);
+    overflow: hidden;
+    cursor: crosshair;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 480px;
+  }
+
+  /* Handle styles */
+  .handle {
+    cursor: grab;
+    transition: transform 0.1s ease;
+  }
+  .handle:hover, .handle:active {
+    cursor: grabbing;
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.8));
+  }
+  .handle-label {
+    font-size: 14px;
+    font-weight: 700;
+    font-family: monospace;
+    pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  }
+
+  /* Hint footer */
+  .footer-bar {
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--slate-50);
+    border-top: 1px solid var(--slate-200);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-alert {
+    color: #B45309;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="editor-container" id="editor-root">
+  <div class="toolbar">
+    <div class="tab-group">
+      <button type="button" class="tab-btn active" id="btn-tab-camera" onclick="setMode('camera')">📷 Camera Plane (Image Points)</button>
+      <button type="button" class="tab-btn" id="btn-tab-floor" onclick="setMode('floor')">📐 Floor Plane (Zones)</button>
+    </div>
+    <div class="tool-status">
+      <span class="badge" id="view-badge">Camera View</span>
+      <span id="active-info">Drag P1–P4 to set perspective reference quad</span>
+    </div>
+  </div>
+
+  <div class="canvas-viewport" id="viewport">
+    <svg id="canvas-svg" viewBox="0 0 920 680" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#000000" flood-opacity="0.8"/>
+        </filter>
+        <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#334155" stroke-width="0.75" stroke-dasharray="2 2"/>
+        </pattern>
+      </defs>
+
+      <!-- Background Camera Frame -->
+      <image id="bg-frame" x="0" y="0" width="920" height="680" href="" preserveAspectRatio="none"/>
+
+      <!-- Floor Plane Grid Background (visible in floor mode) -->
+      <g id="floor-grid-group" style="display: none;">
+        <rect id="floor-bg-rect" x="0" y="0" width="920" height="680" fill="#0F172A"/>
+        <rect id="floor-grid-rect" x="0" y="0" width="920" height="680" fill="url(#grid-pattern)"/>
+        <!-- Floor axes lines -->
+        <line id="floor-axis-x" x1="60" y1="620" x2="860" y2="620" stroke="#475569" stroke-width="2"/>
+        <line id="floor-axis-y" x1="60" y1="620" x2="60" y2="60" stroke="#475569" stroke-width="2"/>
+        <text id="floor-label-x" x="840" y="645" fill="#94A3B8" font-size="12" font-family="monospace">X (units)</text>
+        <text id="floor-label-y" x="30" y="50" fill="#94A3B8" font-size="12" font-family="monospace">Y (units)</text>
+      </g>
+
+      <!-- Camera Mode Layers -->
+      <g id="camera-layer">
+        <!-- Connecting Quad polygon -->
+        <polygon id="cam-quad" points="147,598 754,598 699,346 202,346" 
+                 fill="rgba(13, 148, 136, 0.2)" stroke="#0D9488" stroke-width="2.5" stroke-dasharray="6 3"/>
+        
+        <!-- Handles P1, P2, P3, P4 -->
+        <g class="handle" id="handle-p1" data-idx="0">
+          <circle cx="147" cy="598" r="14" fill="#EF4444" stroke="#FFFFFF" stroke-width="2.5" filter="url(#shadow)"/>
+          <text class="handle-label" x="147" y="568" fill="#FFFFFF" text-anchor="middle" id="txt-p1">P1 (Bottom-Left)</text>
+        </g>
+        <g class="handle" id="handle-p2" data-idx="1">
+          <circle cx="754" cy="598" r="14" fill="#F59E0B" stroke="#FFFFFF" stroke-width="2.5" filter="url(#shadow)"/>
+          <text class="handle-label" x="754" y="568" fill="#FFFFFF" text-anchor="middle" id="txt-p2">P2 (Bottom-Right)</text>
+        </g>
+        <g class="handle" id="handle-p3" data-idx="2">
+          <circle cx="699" cy="346" r="14" fill="#10B981" stroke="#FFFFFF" stroke-width="2.5" filter="url(#shadow)"/>
+          <text class="handle-label" x="699" y="326" fill="#FFFFFF" text-anchor="middle" id="txt-p3">P3 (Top-Right)</text>
+        </g>
+        <g class="handle" id="handle-p4" data-idx="3">
+          <circle cx="202" cy="346" r="14" fill="#3B82F6" stroke="#FFFFFF" stroke-width="2.5" filter="url(#shadow)"/>
+          <text class="handle-label" x="202" y="326" fill="#FFFFFF" text-anchor="middle" id="txt-p4">P4 (Top-Left)</text>
+        </g>
+      </g>
+
+      <!-- Floor Mode Layers -->
+      <g id="floor-layer" style="display: none;">
+        <!-- Floor zones polygons -->
+        <g id="floor-zones-container"></g>
+        <!-- Floor reference perimeter -->
+        <polygon id="floor-ref-quad" points="60,60 860,60 860,620 60,620" 
+                 fill="none" stroke="#0D9488" stroke-width="2" stroke-dasharray="4 4"/>
+        <!-- Floor zone vertex handles -->
+        <g id="floor-vertex-handles"></g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="footer-bar">
+    <span id="coord-readout">P1: [147.0, 598.0] px</span>
+    <span class="footer-alert">Configured floor units · Not independently surveyed physical metres</span>
+  </div>
+</div>
+
+<script>
+// --- State & Initialization ---
+const svg = document.getElementById('canvas-svg');
+const bgFrame = document.getElementById('bg-frame');
+const camQuad = document.getElementById('cam-quad');
+const cameraLayer = document.getElementById('camera-layer');
+const floorLayer = document.getElementById('floor-layer');
+const floorGridGroup = document.getElementById('floor-grid-group');
+const floorZonesContainer = document.getElementById('floor-zones-container');
+const floorVertexHandles = document.getElementById('floor-vertex-handles');
+const coordReadout = document.getElementById('coord-readout');
+const activeInfo = document.getElementById('active-info');
+const viewBadge = document.getElementById('view-badge');
+
+let currentMode = 'camera';
+let activeDrag = null; // { type: 'cam_point' | 'floor_vertex', index: int, zoneId: string }
+let origW = 920;
+let origH = 680;
+
+let profileState = {
+  image_width: 920,
+  image_height: 680,
+  image_points: [[147, 598], [754, 598], [699, 346], [202, 346]],
+  floor_points: [[0, 6], [10, 6], [10, 0], [0, 0]],
+  bounds: [0, 10, 0, 6],
+  cell_size: 0.5,
+  hysteresis_window: 3,
+  zones: [
+    { zone_id: "shelf_a", name: "Shelf A (Snacks)", polygon: [[0.5, 1.0], [4.0, 1.0], [4.0, 5.0], [0.5, 5.0]], color: "#3498DB" },
+    { zone_id: "shelf_b", name: "Shelf B (Produce)", polygon: [[6.0, 1.0], [9.5, 1.0], [9.5, 5.0], [6.0, 5.0]], color: "#2ECC71" },
+    { zone_id: "main_aisle", name: "Main Aisle", polygon: [[4.0, 1.0], [6.0, 1.0], [6.0, 5.0], [4.0, 5.0]], color: "#F39C12" }
+  ],
+  candidate_zone_ids: ["shelf_a", "shelf_b"]
+};
+
+let selectedZoneId = "shelf_a";
+
+// Streamlit protocol helpers
+function sendComponentValue(val) {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setComponentValue",
+    value: val
+  }, "*");
+}
+
+function notifyHeight() {
+  const h = document.getElementById('editor-root').offsetHeight || 560;
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setFrameHeight",
+    height: h + 10
+  }, "*");
+}
+
+function getSvgCursorPoint(evt) {
+  const pt = svg.createSVGPoint();
+  const clientX = evt.touches && evt.touches.length > 0 ? evt.touches[0].clientX : evt.clientX;
+  const clientY = evt.touches && evt.touches.length > 0 ? evt.touches[0].clientY : evt.clientY;
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return { x: 0, y: 0 };
+  const inv = ctm.inverse();
+  const transformed = pt.matrixTransform(inv);
+  return {
+    x: Math.max(0, Math.min(origW, Math.round(transformed.x * 10) / 10)),
+    y: Math.max(0, Math.min(origH, Math.round(transformed.y * 10) / 10))
+  };
+}
+
+// Coordinate conversions for floor mapping
+function floorToSvgCoords(fx, fy) {
+  const [minX, maxX, minY, maxY] = profileState.bounds || [0, 10, 0, 6];
+  const padding = 60;
+  const renderW = origW - padding * 2;
+  const renderH = origH - padding * 2;
+  const normX = (fx - minX) / (maxX - minX || 1.0);
+  const normY = (fy - minY) / (maxY - minY || 1.0);
+  // Invert Y so 0 is at bottom
+  const sx = padding + normX * renderW;
+  const sy = origH - (padding + normY * renderH);
+  return { x: Math.round(sx * 10) / 10, y: Math.round(sy * 10) / 10 };
+}
+
+function svgToFloorCoords(sx, sy) {
+  const [minX, maxX, minY, maxY] = profileState.bounds || [0, 10, 0, 6];
+  const padding = 60;
+  const renderW = origW - padding * 2;
+  const renderH = origH - padding * 2;
+  const normX = (sx - padding) / renderW;
+  const normY = (origH - sy - padding) / renderH;
+  const fx = minX + normX * (maxX - minX);
+  const fy = minY + normY * (maxY - minY);
+  return {
+    x: Math.max(minX, Math.min(maxX, Math.round(fx * 100) / 100)),
+    y: Math.max(minY, Math.min(maxY, Math.round(fy * 100) / 100))
+  };
+}
+
+// Rendering routines
+function renderCameraView() {
+  if (!profileState.image_points || profileState.image_points.length < 4) return;
+  const pts = profileState.image_points;
+  const ptsStr = `${pts[0][0]},${pts[0][1]} ${pts[1][0]},${pts[1][1]} ${pts[2][0]},${pts[2][1]} ${pts[3][0]},${pts[3][1]}`;
+  camQuad.setAttribute('points', ptsStr);
+
+  const labels = ['P1 (Bottom-Left)', 'P2 (Bottom-Right)', 'P3 (Top-Right)', 'P4 (Top-Left)'];
+  for (let i = 0; i < 4; i++) {
+    const handle = document.getElementById(`handle-p${i+1}`);
+    if (handle) {
+      const circle = handle.querySelector('circle');
+      const text = handle.querySelector('text');
+      circle.setAttribute('cx', pts[i][0]);
+      circle.setAttribute('cy', pts[i][1]);
+      text.setAttribute('x', pts[i][0]);
+      text.setAttribute('y', pts[i][1] + (i < 2 ? -22 : 32));
+      text.textContent = `${labels[i]}: [${pts[i][0]}, ${pts[i][1]}]`;
+    }
+  }
+}
+
+function renderFloorView() {
+  floorZonesContainer.innerHTML = '';
+  floorVertexHandles.innerHTML = '';
+
+  const [minX, maxX, minY, maxY] = profileState.bounds || [0, 10, 0, 6];
+  const p1 = floorToSvgCoords(minX, minY);
+  const p2 = floorToSvgCoords(maxX, minY);
+  const p3 = floorToSvgCoords(maxX, maxY);
+  const p4 = floorToSvgCoords(minX, maxY);
+  document.getElementById('floor-ref-quad').setAttribute('points', `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y} ${p4.x},${p4.y}`);
+
+  // Render zones
+  (profileState.zones || []).forEach(z => {
+    const isSelected = z.zone_id === selectedZoneId;
+    const polyPoints = z.polygon.map(pt => {
+      const sp = floorToSvgCoords(pt[0], pt[1]);
+      return `${sp.x},${sp.y}`;
+    }).join(' ');
+
+    const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    poly.setAttribute('points', polyPoints);
+    poly.setAttribute('fill', z.color || '#3498DB');
+    poly.setAttribute('fill-opacity', isSelected ? '0.45' : '0.25');
+    poly.setAttribute('stroke', z.color || '#3498DB');
+    poly.setAttribute('stroke-width', isSelected ? '3' : '1.5');
+    poly.setAttribute('style', 'cursor: pointer;');
+    poly.addEventListener('click', () => {
+      selectedZoneId = z.zone_id;
+      renderFloorView();
+      notifySelection();
+    });
+    floorZonesContainer.appendChild(poly);
+
+    // Label at centroid
+    let cx = 0, cy = 0;
+    z.polygon.forEach(pt => { const sp = floorToSvgCoords(pt[0], pt[1]); cx += sp.x; cy += sp.y; });
+    cx /= z.polygon.length;
+    cy /= z.polygon.length;
+
+    const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lbl.setAttribute('x', cx);
+    lbl.setAttribute('y', cy);
+    lbl.setAttribute('fill', '#FFFFFF');
+    lbl.setAttribute('font-size', '13');
+    lbl.setAttribute('font-weight', '600');
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('filter', 'url(#shadow)');
+    lbl.textContent = z.name || z.zone_id;
+    lbl.setAttribute('style', 'pointer-events: none;');
+    floorZonesContainer.appendChild(lbl);
+
+    // If selected, add vertex draggable handles
+    if (isSelected) {
+      z.polygon.forEach((pt, vIdx) => {
+        const sp = floorToSvgCoords(pt[0], pt[1]);
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute('class', 'handle');
+
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute('cx', sp.x);
+        circle.setAttribute('cy', sp.y);
+        circle.setAttribute('r', '8');
+        circle.setAttribute('fill', z.color || '#3498DB');
+        circle.setAttribute('stroke', '#FFFFFF');
+        circle.setAttribute('stroke-width', '2');
+        circle.setAttribute('filter', 'url(#shadow)');
+        g.appendChild(circle);
+
+        g.addEventListener('mousedown', (e) => startDrag(e, 'floor_vertex', vIdx, z.zone_id));
+        g.addEventListener('touchstart', (e) => startDrag(e, 'floor_vertex', vIdx, z.zone_id), { passive: false });
+        floorVertexHandles.appendChild(g);
+      });
+    }
+  });
+}
+
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-tab-camera').classList.toggle('active', mode === 'camera');
+  document.getElementById('btn-tab-floor').classList.toggle('active', mode === 'floor');
+  cameraLayer.style.display = mode === 'camera' ? 'block' : 'none';
+  bgFrame.style.display = mode === 'camera' ? 'block' : 'none';
+  floorLayer.style.display = mode === 'floor' ? 'block' : 'none';
+  floorGridGroup.style.display = mode === 'floor' ? 'block' : 'none';
+
+  if (mode === 'camera') {
+    viewBadge.textContent = 'Camera View';
+    activeInfo.textContent = 'Drag P1–P4 to define ground quad in image plane';
+    renderCameraView();
+  } else {
+    viewBadge.textContent = 'Floor View';
+    activeInfo.textContent = `Editing Floor Plane Zones · Bounds: [${profileState.bounds.join(', ')}]`;
+    renderFloorView();
+  }
+}
+
+// Interaction Handlers
+function startDrag(evt, type, index, zoneId = null) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  activeDrag = { type, index, zoneId };
+}
+
+function onMove(evt) {
+  if (!activeDrag) return;
+  evt.preventDefault();
+  const c = getSvgCursorPoint(evt);
+
+  if (activeDrag.type === 'cam_point') {
+    const idx = activeDrag.index;
+    profileState.image_points[idx] = [c.x, c.y];
+    renderCameraView();
+    coordReadout.textContent = `P${idx+1}: [${c.x}, ${c.y}] px`;
+  } else if (activeDrag.type === 'floor_vertex') {
+    const z = profileState.zones.find(item => item.zone_id === activeDrag.zoneId);
+    if (z) {
+      const fc = svgToFloorCoords(c.x, c.y);
+      z.polygon[activeDrag.index] = [fc.x, fc.y];
+      renderFloorView();
+      coordReadout.textContent = `${z.name} V${activeDrag.index+1}: [${fc.x}, ${fc.y}] units`;
+    }
+  }
+}
+
+function endDrag(evt) {
+  if (!activeDrag) return;
+  activeDrag = null;
+  // Emit updated state to Streamlit Python
+  sendComponentValue({
+    action: "update_profile",
+    profile: profileState,
+    selected_zone_id: selectedZoneId,
+    timestamp: Date.now()
+  });
+}
+
+function notifySelection() {
+  sendComponentValue({
+    action: "select_zone",
+    selected_zone_id: selectedZoneId,
+    timestamp: Date.now()
+  });
+}
+
+// Setup event listeners on window so dragging outside svg doesn't drop or stick
+window.addEventListener('mousemove', onMove);
+window.addEventListener('mouseup', endDrag);
+window.addEventListener('touchmove', onMove, { passive: false });
+window.addEventListener('touchend', endDrag);
+
+// Setup handles for camera points
+for (let i = 0; i < 4; i++) {
+  const h = document.getElementById(`handle-p${i+1}`);
+  if (h) {
+    h.addEventListener('mousedown', (e) => startDrag(e, 'cam_point', i));
+    h.addEventListener('touchstart', (e) => startDrag(e, 'cam_point', i), { passive: false });
+  }
+}
+
+// Listen to messages from Streamlit
+window.addEventListener("message", function(event) {
+  if (event.data.type === "streamlit:render") {
+    const args = event.data.args || {};
+    if (args.image_width && args.image_height) {
+      origW = args.image_width;
+      origH = args.image_height;
+      svg.setAttribute('viewBox', `0 0 ${origW} ${origH}`);
+      bgFrame.setAttribute('width', origW);
+      bgFrame.setAttribute('height', origH);
+      document.getElementById('floor-bg-rect').setAttribute('width', origW);
+      document.getElementById('floor-bg-rect').setAttribute('height', origH);
+      document.getElementById('floor-grid-rect').setAttribute('width', origW);
+      document.getElementById('floor-grid-rect').setAttribute('height', origH);
+    }
+    if (args.jpeg_base64) {
+      bgFrame.setAttribute('href', 'data:image/jpeg;base64,' + args.jpeg_base64);
+    }
+    if (args.profile) {
+      profileState = args.profile;
+    }
+    if (args.selected_zone_id) {
+      selectedZoneId = args.selected_zone_id;
+    }
+    if (args.mode && args.mode !== currentMode) {
+      setMode(args.mode);
+    } else {
+      if (currentMode === 'camera') renderCameraView();
+      else renderFloorView();
+    }
+    notifyHeight();
+  }
+});
+
+// Component ready handshake
+window.parent.postMessage({
+  isStreamlitMessage: true,
+  type: "streamlit:componentReady",
+  apiVersion: 1
+}, "*");
+
+// Initial render
+renderCameraView();
+notifyHeight();
+</script>
+
+</body>
+</html>

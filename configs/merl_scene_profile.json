@@ -1,0 +1,151 @@
+{
+  "name": "MERL configured camera",
+  "image_width": 920,
+  "image_height": 680,
+  "image_points": [
+    [
+      150.0,
+      600.0
+    ],
+    [
+      750.0,
+      600.0
+    ],
+    [
+      700.0,
+      350.0
+    ],
+    [
+      200.0,
+      350.0
+    ]
+  ],
+  "floor_points": [
+    [
+      0.0,
+      6.0
+    ],
+    [
+      10.0,
+      6.0
+    ],
+    [
+      10.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0
+    ]
+  ],
+  "bounds": [
+    0,
+    10,
+    0,
+    6
+  ],
+  "cell_size": 0.5,
+  "zones": [
+    {
+      "zone_id": "shelf_a",
+      "name": "Shelf A (Snacks & Beverages)",
+      "polygon": [
+        [
+          0.5,
+          1.0
+        ],
+        [
+          4.0,
+          1.0
+        ],
+        [
+          4.0,
+          5.0
+        ],
+        [
+          0.5,
+          5.0
+        ]
+      ],
+      "color": "#3498db",
+      "description": "Left product shelf display section"
+    },
+    {
+      "zone_id": "shelf_b",
+      "name": "Shelf B (Produce & Dairy)",
+      "polygon": [
+        [
+          6.0,
+          1.0
+        ],
+        [
+          9.5,
+          1.0
+        ],
+        [
+          9.5,
+          5.0
+        ],
+        [
+          6.0,
+          5.0
+        ]
+      ],
+      "color": "#2ecc71",
+      "description": "Right product shelf display section"
+    },
+    {
+      "zone_id": "main_aisle",
+      "name": "Central Aisle",
+      "polygon": [
+        [
+          4.0,
+          1.0
+        ],
+        [
+          6.0,
+          1.0
+        ],
+        [
+          6.0,
+          5.0
+        ],
+        [
+          4.0,
+          5.0
+        ]
+      ],
+      "color": "#f39c12",
+      "description": "Main central pedestrian walk aisle"
+    },
+    {
+      "zone_id": "checkout",
+      "name": "Checkout Counter Area",
+      "polygon": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          10.0,
+          0.0
+        ],
+        [
+          10.0,
+          1.0
+        ],
+        [
+          0.0,
+          1.0
+        ]
+      ],
+      "color": "#e74c3c",
+      "description": "Front checkout & billing zone"
+    }
+  ],
+  "candidate_zone_ids": [
+    "shelf_a",
+    "shelf_b"
+  ],
+  "hysteresis_window": 3
+}

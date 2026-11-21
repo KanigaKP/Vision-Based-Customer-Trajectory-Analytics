@@ -76,3 +76,29 @@ def test_trajectory_extraction_from_track():
     assert extracted_traj.points[0].image_y == 300.0  # y2
     assert extracted_traj.points[1].image_x == 154.0  # (104+204)/2
     assert extracted_traj.points[1].image_y == 302.0  # y2
+
+
+def test_trajectory_missing_image_coordinates_non_fabricating():
+    """Verify that missing image coordinates remain None, do not invent zeros, and do not affect floor distance or dwell."""
+    pt1 = TrajectoryPoint(track_id=1, frame_idx=1, timestamp_sec=0.0, image_x=None, image_y=None, floor_x=0.0, floor_y=0.0, zone_id="zone_a")
+    pt2 = TrajectoryPoint(track_id=1, frame_idx=2, timestamp_sec=1.0, image_x=None, image_y=None, floor_x=3.0, floor_y=4.0, zone_id="zone_a")
+    
+    traj = Trajectory(track_id=1)
+    traj.add_point(pt1)
+    traj.add_point(pt2)
+    
+    assert pt1.image_x is None
+    assert pt1.image_y is None
+    assert traj.calculate_image_distance() == 0.0
+    assert traj.calculate_floor_distance() == 5.0
+    assert len(traj.get_image_points()) == 0
+    assert len(traj.get_floor_points()) == 2
+    
+    # Verify serialization does not convert None to 0.0
+    d = pt1.to_dict()
+    assert d["image_x"] is None
+    assert d["image_y"] is None
+    assert d["floor_x"] == 0.0
+    assert d["floor_y"] == 0.0
+    assert d["zone_id"] == "zone_a"
+

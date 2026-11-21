@@ -12,3 +12,4 @@ scipy
 onnxruntime
 huggingface_hub
 pytest
+streamlit

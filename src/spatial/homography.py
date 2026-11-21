@@ -148,19 +148,33 @@ class HomographyCalibrator:
         if not trajectory.points:
             return trajectory
 
-        img_pts = np.array([[p.image_x, p.image_y] for p in trajectory.points], dtype=np.float32)
-        floor_pts = self.transform_points(img_pts)
-
         transformed_points = []
-        for orig_pt, f_pt in zip(trajectory.points, floor_pts):
+        valid_indices = [
+            i for i, p in enumerate(trajectory.points)
+            if p.image_x is not None and p.image_y is not None
+        ]
+        transformed_map = {}
+        if valid_indices:
+            valid_pts = np.array([[trajectory.points[i].image_x, trajectory.points[i].image_y] for i in valid_indices], dtype=np.float32)
+            floor_pts = self.transform_points(valid_pts)
+            for idx, f_pt in zip(valid_indices, floor_pts):
+                transformed_map[idx] = (round(float(f_pt[0]), 2), round(float(f_pt[1]), 2))
+
+        for idx, orig_pt in enumerate(trajectory.points):
+            if idx in transformed_map:
+                fx, fy = transformed_map[idx]
+            else:
+                fx, fy = orig_pt.floor_x, orig_pt.floor_y
+
             t_pt = TrajectoryPoint(
                 track_id=orig_pt.track_id,
                 frame_idx=orig_pt.frame_idx,
                 timestamp_sec=orig_pt.timestamp_sec,
                 image_x=orig_pt.image_x,
                 image_y=orig_pt.image_y,
-                floor_x=round(float(f_pt[0]), 2),
-                floor_y=round(float(f_pt[1]), 2)
+                floor_x=fx,
+                floor_y=fy,
+                zone_id=orig_pt.zone_id
             )
             transformed_points.append(t_pt)
 

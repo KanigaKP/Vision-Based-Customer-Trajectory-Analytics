@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Direction A Synchronized Frame & Trajectory Explorer</title>
+<style>
+  :root {
+    --teal-primary: #0D9488;
+    --teal-hover: #0F766E;
+    --teal-light: #F0FDFA;
+    --teal-border: #99F6E4;
+    --slate-900: #0F172A;
+    --slate-800: #1E293B;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-200: #E2E8F0;
+    --slate-100: #F1F5F9;
+    --slate-50: #F8FAFC;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --amber-500: #F59E0B;
+    --amber-50: #FFFBEB;
+    --amber-border: #FDE68A;
+    --blue-500: #3B82F6;
+    --red-500: #EF4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #FFFFFF;
+    color: var(--text-primary);
+    user-select: none;
+    -webkit-user-select: none;
+    padding: 2px;
+    overflow-x: hidden;
+  }
+
+  .explorer-root {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid var(--slate-200);
+    border-radius: 12px;
+    background: #FFFFFF;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Viewport Mode Switcher & Zone Indicator Bar */
+  .view-mode-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--slate-100);
+    border-bottom: 1px solid var(--slate-200);
+  }
+
+  .mode-group {
+    display: inline-flex;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+    padding: 2px;
+    gap: 2px;
+  }
+
+  .mode-btn {
+    border: none;
+    background: transparent;
+    color: var(--slate-700);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .mode-btn:hover {
+    background: var(--slate-50);
+  }
+
+  .mode-btn.active {
+    background: var(--teal-primary);
+    color: #FFFFFF;
+    box-shadow: 0 1px 3px rgba(13, 148, 136, 0.3);
+  }
+
+  .sel-zone-pill {
+    font-size: 11px;
+    font-family: monospace;
+    color: var(--slate-700);
+    background: #FFFFFF;
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sel-zone-pill strong {
+    color: var(--teal-primary);
+  }
+
+  /* Top Viewport: Video & Floor Map Side-by-Side */
+  .viewport-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 12px;
+    background: var(--slate-900);
+    transition: all 0.2s ease;
+  }
+
+  .viewport-grid.mode-camera {
+    grid-template-columns: 1fr;
+  }
+  .viewport-grid.mode-camera #floor-panel {
+    display: none !important;
+  }
+  .viewport-grid.mode-camera #video-panel {
+    grid-column: 1 / -1;
+  }
+
+  .viewport-grid.mode-floor {
+    grid-template-columns: 1fr;
+  }
+  .viewport-grid.mode-floor #video-panel {
+    display: none !important;
+  }
+  .viewport-grid.mode-floor #floor-panel {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 880px) {
+    .viewport-grid:not(.mode-camera):not(.mode-floor) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .media-container {
+      height: 205px !important;
+    }
+    .viewport-grid {
+      gap: 6px !important;
+      padding: 6px !important;
+    }
+    .panel-header {
+      padding: 4px 8px !important;
+      font-size: 11px !important;
+    }
+  }
+
+  .panel-box {
+    display: flex;
+    flex-direction: column;
+    background: var(--slate-800);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--slate-700);
+    position: relative;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: rgba(15, 23, 42, 0.85);
+    border-bottom: 1px solid var(--slate-700);
+    color: #F8FAFC;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .panel-badge {
+    background: rgba(13, 148, 136, 0.25);
+    color: #5EEAD4;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .media-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000000;
+    overflow: hidden;
+  }
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Video HUD overlay */
+  .hud-overlay {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-family: monospace;
+    color: #FFFFFF;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .hud-cam-status {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #5EEAD4;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Interactive Analytical 3D Floor View */
+  .floor-3d-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #0B132B;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #floor-3d-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+    touch-action: none; /* Crucial: canvas captures gestures; outside scrolls page normally */
+    outline: none;
+  }
+
+  #floor-3d-canvas:focus {
+    box-shadow: inset 0 0 0 2px rgba(94, 234, 212, 0.4);
+  }
+
+  #floor-3d-canvas:active {
+    cursor: grabbing;
+  }
+
+  .hud-3d-disclaimer {
+    position: absolute;
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #94A3B8;
+    pointer-events: none;
+    z-index: 10;
+    line-height: 1.3;
+    white-space: normal;
+  }
+
+  .scale-3d-ruler {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    background: rgba(15, 23, 42, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-family: monospace;
+    color: #5EEAD4;
+    pointer-events: none;
+    z-index: 10;
+    max-width: calc(100% - 16px);
+  }
+
+  /* 3D Toolbar Strip - Docked outside canvas */
+  .toolbar-3d-strip {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    background: rgba(15, 23, 42, 0.95);
+    border-top: 1px solid var(--slate-700);
+    align-items: center;
+    justify-content: space-between;
+  }
+  .toolbar-3d-strip.active {
+    display: flex;
+  }
+
+  .toolbar-3d-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .toolbar-3d-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94A3B8;
+    margin-right: 2px;
+  }
+
+  .btn-3d-tool {
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #F8FAFC;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: all 0.15s ease;
+  }
+
+  .btn-3d-tool:hover {
+    background: var(--teal-primary);
+    border-color: var(--teal-border);
+    color: #FFFFFF;
+  }
+
+  /* 3D Zone Legend Strip - Docked outside canvas */
+  .floor-3d-legend-strip {
+    display: none;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #0B132B;
+    border-top: 1px solid var(--slate-800);
+    align-items: center;
+    font-size: 10px;
+  }
+  .floor-3d-legend-strip.active {
+    display: flex;
+  }
+
+  .legend-zone-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    background: rgba(30, 41, 59, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    cursor: pointer;
+    color: #CBD5E1;
+    transition: all 0.15s ease;
+  }
+
+  .legend-zone-chip:hover {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: #5EEAD4;
+    color: #FFFFFF;
+  }
+
+  .legend-zone-chip.selected {
+    background: rgba(13, 148, 136, 0.35);
+    border-color: #5EEAD4;
+    color: #FFFFFF;
+    font-weight: 600;
+    box-shadow: 0 0 6px rgba(94, 234, 212, 0.3);
+  }
+
+  .legend-color-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Scrubber & Controls Toolbar */
+  .control-strip {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: var(--slate-50);
+    border-top: 1px solid var(--slate-200);
+    border-bottom: 1px solid var(--slate-200);
+  }
+
+  .scrubber-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .scrubber-slider {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    background: var(--slate-200);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+  }
+  .scrubber-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--teal-primary);
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+  }
+  .scrubber-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+  }
+
+  .buttons-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .btn-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate-700);
+    background: #FFFFFF;
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .ctrl-btn:hover {
+    background: var(--slate-100);
+    border-color: var(--slate-300);
+  }
+  .ctrl-btn.primary {
+    background: var(--teal-primary);
+    color: #FFFFFF;
+    border-color: var(--teal-primary);
+  }
+  .ctrl-btn.primary:hover {
+    background: var(--teal-hover);
+  }
+
+  /* Info badges strip */
+  .badge-cluster {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .stat-badge {
+    background: #FFFFFF;
+    border: 1px solid var(--slate-200);
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: var(--slate-700);
+    font-family: monospace;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .stat-badge strong {
+    color: var(--teal-primary);
+  }
+
+  /* Bottom Row: Observation Details & Layer Toggles */
+  .details-strip {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 12px;
+    padding: 12px;
+    background: #FFFFFF;
+  }
+  @media (max-width: 880px) {
+    .details-strip {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .card-box {
+    border: 1px solid var(--slate-200);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--slate-800);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .obs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  .obs-item {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 6px;
+    padding: 6px 8px;
+  }
+  .obs-label {
+    color: var(--text-secondary);
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .obs-value {
+    color: var(--text-primary);
+    font-family: monospace;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .layer-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .layer-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--slate-700);
+    cursor: pointer;
+  }
+
+  .gap-notice {
+    color: #DC2626;
+    font-weight: 600;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* 390px Mobile Viewport Optimizations */
+  @media (max-width: 640px) {
+    .viewport-grid {
+      grid-template-columns: 1fr;
+      padding: 8px;
+      gap: 8px;
+    }
+    .media-container {
+      height: 250px;
+    }
+    .control-strip {
+      padding: 8px;
+      gap: 6px;
+    }
+    .buttons-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+    .btn-group {
+      width: 100%;
+      display: flex;
+    }
+    .ctrl-btn {
+      flex: 1;
+      padding: 8px 4px;
+      font-size: 11px;
+    }
+    .badge-cluster {
+      justify-content: center;
+      gap: 4px;
+    }
+    .stat-badge {
+      font-size: 10px;
+      padding: 2px 4px;
+    }
+    .details-strip {
+      grid-template-columns: 1fr;
+      padding: 8px;
+      gap: 8px;
+    }
+    .obs-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .view-mode-bar {
+      padding: 6px 8px;
+    }
+    .mode-btn {
+      padding: 4px 6px;
+      font-size: 10px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="explorer-root" id="explorer-root">
+  <!-- Viewport Switcher & Active Zone Strip -->
+  <div class="view-mode-bar">
+    <div class="mode-group">
+      <button type="button" class="mode-btn active" id="btn-mode-both" onclick="setViewportMode('both', true)">⊞ Both Panels</button>
+      <button type="button" class="mode-btn" id="btn-mode-cam" onclick="setViewportMode('camera', true)">📹 Camera View</button>
+      <button type="button" class="mode-btn" id="btn-mode-flr" onclick="setViewportMode('floor', true)">📐 Floor Map</button>
+    </div>
+    <div class="sel-zone-pill" id="hud-sel-zone">
+      Selected Zone: <strong id="hud-sel-zone-name">None</strong>
+    </div>
+  </div>
+
+  <!-- Top: Synchronized Video and Floor Canvas -->
+  <div class="viewport-grid" id="viewport-grid">
+    <!-- Left: Video Panel -->
+    <div class="panel-box" id="video-panel">
+      <div class="panel-header">
+        <span>🎬 Camera Video Playback</span>
+        <span class="panel-badge" id="video-state-badge">Ready</span>
+      </div>
+      <div class="media-container" id="video-box">
+        <video id="sync-video" playsinline preload="auto"></video>
+        <!-- Camera Projected Zone Geofence Overlay -->
+        <svg id="camera-overlay-svg" viewBox="0 0 920 680" preserveAspectRatio="xMidYMid meet" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:5;">
+          <defs>
+            <filter id="cam-glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#0D9488" flood-opacity="0.95"/>
+            </filter>
+          </defs>
+          <g id="cam-layer-zones"></g>
+          <g id="cam-layer-active"></g>
+        </svg>
+        <div class="hud-overlay" id="hud-text">Frame: 0 | Time: 0.00s</div>
+        <div class="hud-cam-status" id="hud-cam-status">Projected using configured homography</div>
+      </div>
+    </div>
+
+    <!-- Right: Orthogonal Floor Map Panel -->
+    <div class="panel-box" id="floor-panel">
+      <div class="panel-header">
+        <span>📐 Floor Map</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <div class="mode-group" style="margin:0;">
+            <button type="button" class="mode-btn" id="btn-flr-2d" onclick="setFloorPerspective('2d', true)">2D Plan</button>
+            <button type="button" class="mode-btn active" id="btn-flr-3d" onclick="setFloorPerspective('3d', true)">3D Analytical</button>
+          </div>
+          <span class="panel-badge" id="floor-point-count-badge">0 points</span>
+        </div>
+      </div>
+      <!-- 3D Analytical Toolbar Strip (accessible alternatives to drag controls, docked outside canvas) -->
+      <div class="toolbar-3d-strip" id="toolbar-3d-strip">
+        <div class="toolbar-3d-group">
+          <span class="toolbar-3d-label">Orbit:</span>
+          <button type="button" class="btn-3d-tool" onclick="orbit3D(-0.15, 0)" title="Orbit Left (ArrowLeft)">↶</button>
+          <button type="button" class="btn-3d-tool" onclick="orbit3D(0.15, 0)" title="Orbit Right (ArrowRight)">↷</button>
+          <button type="button" class="btn-3d-tool" onclick="orbit3D(0, -0.1)" title="Tilt Up (ArrowUp)">▲</button>
+          <button type="button" class="btn-3d-tool" onclick="orbit3D(0, 0.1)" title="Tilt Down (ArrowDown)">▼</button>
+        </div>
+        <div class="toolbar-3d-group">
+          <span class="toolbar-3d-label">Zoom:</span>
+          <button type="button" class="btn-3d-tool" onclick="zoom3D(1.15)" title="Zoom In (+)">+</button>
+          <button type="button" class="btn-3d-tool" onclick="zoom3D(0.85)" title="Zoom Out (−)">−</button>
+        </div>
+        <div class="toolbar-3d-group">
+          <span class="toolbar-3d-label">Pan:</span>
+          <button type="button" class="btn-3d-tool" onclick="pan3D(-15, 0)" title="Pan Left (Shift+ArrowLeft)">←</button>
+          <button type="button" class="btn-3d-tool" onclick="pan3D(15, 0)" title="Pan Right (Shift+ArrowRight)">→</button>
+          <button type="button" class="btn-3d-tool" onclick="pan3D(0, -15)" title="Pan Up (Shift+ArrowUp)">↑</button>
+          <button type="button" class="btn-3d-tool" onclick="pan3D(0, 15)" title="Pan Down (Shift+ArrowDown)">↓</button>
+        </div>
+        <div class="toolbar-3d-group">
+          <button type="button" class="btn-3d-tool" id="btn-3d-reset" onclick="reset3DCamera()" title="Reset Camera View (R / Home)">↺ Reset</button>
+          <button type="button" class="btn-3d-tool" id="btn-3d-tilt" onclick="toggle3DTopView()" title="Toggle Top / Isometric View (T)">📐 Top/Iso</button>
+        </div>
+      </div>
+      <div class="media-container" id="floor-box">
+        <svg id="floor-svg" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#0D9488" flood-opacity="0.9"/>
+            </filter>
+            <pattern id="floor-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1E293B" stroke-width="0.8" stroke-dasharray="2 2"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="#0B132B"/>
+          <rect width="100%" height="100%" fill="url(#floor-grid)"/>
+
+          <!-- Density Grid Layer -->
+          <g id="layer-density" style="display: none;"></g>
+
+          <!-- Zone Polygons Layer -->
+          <g id="layer-zones"></g>
+
+          <!-- Candidate Hotspot Cell Layer -->
+          <g id="layer-candidate"></g>
+
+          <!-- Trajectory Trails Layer -->
+          <g id="layer-trails"></g>
+
+          <!-- Active Sample Points Layer -->
+          <g id="layer-points"></g>
+        </svg>
+        <div id="floor-3d-container" class="floor-3d-wrapper" style="display:none;">
+          <canvas id="floor-3d-canvas" tabindex="0" aria-label="Interactive 3D analytical floor map"></canvas>
+          <div class="hud-3d-disclaimer">Analytical 3D Visualization · Extruded Whole-run Observed Dwell & Trajectories (Not Measured 3D Reconstruction)</div>
+          <div class="scale-3d-ruler" id="scale-3d-ruler">Whole-run observed dwell scale: 0s – 20s (Labelled Seconds Scale)</div>
+        </div>
+      </div>
+      <!-- 3D Zone Legend Strip (lists each zone with identity color dot, whole-run dwell, and click-to-select) -->
+      <div id="selected-zone-caption" role="status" style="color:#E2E8F0;background:#0F172A;padding:8px 12px;white-space:normal;overflow-wrap:anywhere;font-size:12px;line-height:1.5"></div>
+      <div class="floor-3d-legend-strip" id="floor-3d-legend-strip">
+        <span style="font-weight:600; color:#CBD5E1; margin-right:4px;">Whole-Run Dwell:</span>
+        <div id="legend-zone-chips" style="display:inline-flex; flex-wrap:wrap; gap:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Middle: Scrubbing Controller -->
+  <div class="control-strip">
+    <div class="scrubber-row">
+      <input type="range" class="scrubber-slider" id="sample-slider" min="0" max="0" value="0" step="1">
+    </div>
+
+    <div class="buttons-row">
+      <div class="btn-group">
+        <button type="button" class="ctrl-btn primary" id="btn-play" onclick="togglePlay()">▶ Play</button>
+        <button type="button" class="ctrl-btn" id="btn-prev" onclick="stepSample(-1)">⏮ Prev Sample</button>
+        <button type="button" class="ctrl-btn" id="btn-next" onclick="stepSample(1)">Next Sample ⏭</button>
+      </div>
+
+      <div class="badge-cluster">
+        <span class="stat-badge">Sample: <strong id="lbl-sample-idx">0 / 0</strong></span>
+        <span class="stat-badge">Source Time: <strong id="lbl-source-time">0.00s</strong> (Native Frame #<span id="lbl-native-frame">0</span>)</span>
+        <span class="stat-badge">Playback Time: <strong id="lbl-play-time">0.00s</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom: Observation Details & Layer Toggles -->
+  <div class="details-strip">
+    <!-- Active Observation Card -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>📍 Sampled Observation Inspector</span>
+        <select id="sel-track" onchange="onTrackSelectChange()" style="padding:2px 6px; font-size:11px; border-radius:4px; border:1px solid #CBD5E1;">
+          <option value="all">Focus: All Active Tracks</option>
+        </select>
+      </div>
+
+      <div class="obs-grid" id="obs-detail-grid">
+        <div class="obs-item">
+          <div class="obs-label">Clip-Local Track</div>
+          <div class="obs-value" id="val-track-id">None</div>
+        </div>
+        <div class="obs-item">
+          <div class="obs-label">Assigned Zone</div>
+          <div class="obs-value" id="val-zone">Unassigned</div>
+        </div>
+        <div class="obs-item">
+          <div class="obs-label">Floor Position</div>
+          <div class="obs-value" id="val-floor-pos">N/A</div>
+        </div>
+        <div class="obs-item">
+          <div class="obs-label">Image Pixel Base</div>
+          <div class="obs-value" id="val-image-pos">N/A</div>
+        </div>
+        <div class="obs-item">
+          <div class="obs-label">Confidence</div>
+          <div class="obs-value" id="val-confidence">N/A</div>
+        </div>
+      </div>
+      <div id="gap-warning" style="display:none;" class="gap-notice">⚠️ Observation Gap: Tracker lost detection continuity at this sampled frame.</div>
+    </div>
+
+    <!-- Layer Toggles Card -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>👁️ Connected Analytical Layers</span>
+      </div>
+      <div class="layer-checkboxes">
+        <label class="layer-opt"><input type="checkbox" id="chk-zones" checked onchange="onLayerToggleChange()"> Zones</label>
+        <label class="layer-opt"><input type="checkbox" id="chk-trails" checked onchange="onLayerToggleChange()"> Trajectory Trails</label>
+        <label class="layer-opt"><input type="checkbox" id="chk-points" checked onchange="onLayerToggleChange()"> Current Positions</label>
+        <label class="layer-opt"><input type="checkbox" id="chk-candidate" checked onchange="onLayerToggleChange()"> Candidate Cell</label>
+        <label class="layer-opt">
+          <select id="sel-density-mode" onchange="onLayerToggleChange()" style="font-size:11px; padding:2px 4px; border-radius:4px; border:1px solid #CBD5E1;">
+            <option value="none">Density: Off</option>
+            <option value="cumulative">Density: Cumulative to Sample</option>
+            <option value="full">Density: Full Run (Reference)</option>
+          </select>
+        </label>
+      </div>
+      <div style="font-size:10px; color:#64748B; margin-top:4px;">
+        Shortcuts: <strong>Space</strong> (Play/Pause), <strong>← / →</strong> (Step Samples), <strong>Home / End</strong> (Jump Start/End). Click any zone polygon to link.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="spatial_player_engine.js"></script>
+<script>
+// --- State & Timeline Containers ---
+const video = document.getElementById('sync-video');
+const slider = document.getElementById('sample-slider');
+const btnPlay = document.getElementById('btn-play');
+const hudText = document.getElementById('hud-text');
+const hudCamStatus = document.getElementById('hud-cam-status');
+const hudSelZoneName = document.getElementById('hud-sel-zone-name');
+const viewportGrid = document.getElementById('viewport-grid');
+const lblSampleIdx = document.getElementById('lbl-sample-idx');
+const lblSourceTime = document.getElementById('lbl-source-time');
+const lblNativeFrame = document.getElementById('lbl-native-frame');
+const lblPlayTime = document.getElementById('lbl-play-time');
+const videoStateBadge = document.getElementById('video-state-badge');
+const selTrack = document.getElementById('sel-track');
+
+const floorSvg = document.getElementById('floor-svg');
+const cameraSvg = document.getElementById('camera-overlay-svg');
+const camLayerZones = document.getElementById('cam-layer-zones');
+const camLayerActive = document.getElementById('cam-layer-active');
+const layerZones = document.getElementById('layer-zones');
+const layerTrails = document.getElementById('layer-trails');
+const layerPoints = document.getElementById('layer-points');
+const layerCandidate = document.getElementById('layer-candidate');
+const layerDensity = document.getElementById('layer-density');
+const floorPointBadge = document.getElementById('floor-point-count-badge');
+
+let timelineData = null;
+let currentSampleIdx = 0;
+let pendingVideoSeekTime = null;
+const acceptSeekRequest = SpatialPlayerEngine.createSeekGate();
+let totalSamples = 0;
+let selectedTrackId = "all";
+let isPlaying = false;
+let currentViewportMode = "both";
+let runGeometry = {
+  bounds: [0, 10, 0, 6],
+  cell_size: 0.5,
+  zones: {},
+  zone_colors: {},
+  zone_names: {},
+  candidate_hotspot_cell: null,
+  selected_zone_id: null,
+  camera_polygons: {},
+  image_size: [920, 680],
+  candidate_zone_ids: []
+};
+
+// Streamlit Communication
+function sendComponentValue(val) {
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setComponentValue",
+    value: val
+  }, "*");
+}
+
+function notifyHeight() {
+  const h = document.getElementById('explorer-root').offsetHeight || 620;
+  window.parent.postMessage({
+    isStreamlitMessage: true,
+    type: "streamlit:setFrameHeight",
+    height: h + 15
+  }, "*");
+}
+
+// Viewport Mode Switcher (Both, Camera, Floor)
+let userSelectedViewportMode = false;
+function setViewportMode(mode, fromUser = true) {
+  if (fromUser) userSelectedViewportMode = true;
+  currentViewportMode = mode;
+  viewportGrid.classList.remove('mode-camera', 'mode-floor');
+  document.getElementById('btn-mode-both').classList.remove('active');
+  document.getElementById('btn-mode-cam').classList.remove('active');
+  document.getElementById('btn-mode-flr').classList.remove('active');
+
+  if (mode === 'camera') {
+    viewportGrid.classList.add('mode-camera');
+    document.getElementById('btn-mode-cam').classList.add('active');
+  } else if (mode === 'floor') {
+    viewportGrid.classList.add('mode-floor');
+    document.getElementById('btn-mode-flr').classList.add('active');
+  } else {
+    document.getElementById('btn-mode-both').classList.add('active');
+  }
+  notifyHeight();
+}
+
+function checkNarrowScreenDefault() {
+  if (!userSelectedViewportMode && window.innerWidth <= 720 && currentViewportMode === 'both') {
+    setViewportMode('camera', false);
+  } else if (!userSelectedViewportMode && window.innerWidth > 720 && currentViewportMode !== 'both') {
+    setViewportMode('both', false);
+  }
+}
+window.addEventListener('resize', checkNarrowScreenDefault);
+
+// Interactive Analytical 3D Floor Engine
+let currentFloorPerspective = "2d";
+let userSelectedPerspective = false;
+
+const camera3D = {
+  yaw: -0.65, // ~-37 degrees (isometric azimuth)
+  pitch: 0.58, // ~33 degrees (elevation angle above ground)
+  distance: 1.0, // zoom factor
+  panX: 0,
+  panY: 0,
+  isDragging: false,
+  dragMode: 'orbit',
+  lastX: 0,
+  lastY: 0,
+  isTopView: false
+};
+
+let interactive3DPolygons = []; // Clickable items on canvas: { zid, poly2D, depth }
+let canvas3DInitialized = false;
+
+function reset3DCamera() {
+  camera3D.yaw = -0.65;
+  camera3D.pitch = 0.58;
+  camera3D.distance = 1.0;
+  camera3D.panX = 0;
+  camera3D.panY = 0;
+  camera3D.isTopView = false;
+  render3DFloorView();
+}
+
+function toggle3DTopView() {
+  if (camera3D.isTopView) {
+    camera3D.yaw = -0.65;
+    camera3D.pitch = 0.58;
+    camera3D.isTopView = false;
+  } else {
+    camera3D.yaw = 0.0;
+    camera3D.pitch = 1.54; // ~88 degrees (top-down)
+    camera3D.isTopView = true;
+  }
+  render3DFloorView();
+}
+
+function orbit3D(dYaw, dPitch) {
+  camera3D.yaw += dYaw;
+  camera3D.pitch = Math.max(0.08, Math.min(1.54, camera3D.pitch + dPitch));
+  camera3D.isTopView = false;
+  render3DFloorView();
+}
+
+function pan3D(dx, dy) {
+  camera3D.panX += dx;
+  camera3D.panY += dy;
+  render3DFloorView();
+}
+
+function zoom3D(factor) {
+  camera3D.distance = Math.max(0.35, Math.min(3.5, camera3D.distance * factor));
+  render3DFloorView();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function update3DLegend() {
+  const container = document.getElementById('legend-zone-chips');
+  if (!container || !runGeometry || !runGeometry.zones) return;
+  const selZ = runGeometry.selected_zone_id;
+
+  let html = '';
+  Object.keys(runGeometry.zones).forEach(zid => {
+    const isSel = (zid === selZ);
+    const zName = (runGeometry.zone_names && runGeometry.zone_names[zid]) || zid;
+    const baseHex = (runGeometry.zone_colors && runGeometry.zone_colors[zid]) || '#3498DB';
+    const zd = (runGeometry.zone_dwell && runGeometry.zone_dwell[zid]) || {};
+    const dwellSec = zd.observed_dwell_sec !== undefined ? zd.observed_dwell_sec : zd.observed_dwell_span_sec;
+    const dwellClass = SpatialPlayerEngine.classifyDwellState(dwellSec, zd.dwell_status);
+    const dwellLabel = dwellClass.label;
+
+    html += `<div class="legend-zone-chip ${isSel ? 'selected' : ''}" onclick="selectZone('${zid}')" title="Click to select ${zName}">` +
+      `<span class="legend-color-dot" style="background:${baseHex};"></span>` +
+      `<span>${isSel ? '★ ' : ''}${zName}: <strong>${dwellLabel}</strong></span>` +
+      `</div>`;
+  });
+  container.innerHTML = html;
+}
+
+function setFloorPerspective(perspective, fromUser = false) {
+  if (fromUser) userSelectedPerspective = true;
+  currentFloorPerspective = perspective;
+  const svg2d = document.getElementById('floor-svg');
+  const container3d = document.getElementById('floor-3d-container');
+  const btn2d = document.getElementById('btn-flr-2d');
+  const btn3d = document.getElementById('btn-flr-3d');
+  const toolbarStrip = document.getElementById('toolbar-3d-strip');
+  const legendStrip = document.getElementById('floor-3d-legend-strip');
+
+  if (perspective === '3d') {
+    if (svg2d) svg2d.style.display = 'none';
+    if (container3d) {
+      container3d.style.display = 'block';
+      init3DCanvasIfNeeded();
+      render3DFloorView();
+    }
+    if (toolbarStrip) toolbarStrip.classList.add('active');
+    if (legendStrip) {
+      legendStrip.classList.add('active');
+      update3DLegend();
+    }
+    if (btn2d) btn2d.classList.remove('active');
+    if (btn3d) btn3d.classList.add('active');
+  } else {
+    if (svg2d) svg2d.style.display = 'block';
+    if (container3d) container3d.style.display = 'none';
+    if (toolbarStrip) toolbarStrip.classList.remove('active');
+    if (legendStrip) legendStrip.classList.remove('active');
+    if (btn2d) btn2d.classList.add('active');
+    if (btn3d) btn3d.classList.remove('active');
+    renderFloorMap();
+  }
+  notifyHeight();
+}
+
+function renderCurrentFloorView() {
+  if (currentFloorPerspective === '3d') {
+    render3DFloorView();
+  } else {
+    renderFloorMap();
+  }
+}
+
+function updateSelectedZoneHud() {
+  const zid = runGeometry.selected_zone_id;
+  const caption = document.getElementById('selected-zone-caption');
+  const dwell = (runGeometry.zone_dwell || {})[zid] || {};
+  const value = dwell.observed_dwell_sec ?? dwell.observed_dwell_span_sec;
+  const state = SpatialPlayerEngine.classifyDwellState(value, dwell.dwell_status);
+  caption.textContent = zid ? `★ Selected: ${(runGeometry.zone_names || {})[zid] || zid} · Whole-run observed dwell: ${state.label}. Analytical height, not physical geometry.` : 'Select a configured zone to inspect its recorded dwell.';
+
+  if (zid && runGeometry.zone_names && runGeometry.zone_names[zid]) {
+    hudSelZoneName.textContent = runGeometry.zone_names[zid];
+  } else if (zid) {
+    hudSelZoneName.textContent = zid;
+  } else {
+    hudSelZoneName.textContent = "None";
+  }
+}
+
+function selectZone(zid) {
+  runGeometry.selected_zone_id = zid;
+  updateSelectedZoneHud();
+  renderCurrentFloorView();
+  renderCameraOverlay();
+  update3DLegend();
+  sendComponentValue({
+    action: "select_zone",
+    zone_id: zid,
+    sample_index: currentSampleIdx,
+    timestamp: Date.now()
+  });
+}
+
+function onLayerToggleChange() {
+  renderCurrentFloorView();
+  renderCameraOverlay();
+}
+
+function hexToRgb(hex) {
+  if (!hex || typeof hex !== 'string') return { r: 52, g: 152, b: 219 };
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const num = parseInt(hex, 16);
+  if (isNaN(num)) return { r: 52, g: 152, b: 219 };
+  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+function pointInPoly(px, py, poly) {
+  if (!poly || poly.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > py) !== (yj > py)) &&
+        (px < (xj - xi) * (py - yi) / (yj - yi || 0.00001) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function project3D(x, y, z, cx, cy, S, W, H) {
+  return SpatialPlayerEngine.project3D(x, y, z, cx, cy, S, W, H, camera3D);
+}
+
+function handleCanvasClick(clientX, clientY) {
+  const canvas = document.getElementById('floor-3d-canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const clickX = (clientX - rect.left) * dpr;
+  const clickY = (clientY - rect.top) * dpr;
+  let clickedZoneId = null;
+
+  for (let k = interactive3DPolygons.length - 1; k >= 0; k--) {
+    const item = interactive3DPolygons[k];
+    if (pointInPoly(clickX, clickY, item.poly2D)) {
+      clickedZoneId = item.zid;
+      break;
+    }
+  }
+  if (clickedZoneId) {
+    selectZone(clickedZoneId);
+  }
+}
+
+// Accessible keyboard navigation for 3D view
+window.addEventListener('keydown', (e) => {
+  if (currentFloorPerspective !== '3d') return;
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes((document.activeElement || {}).tagName)) return;
+
+  const canvas = document.getElementById('floor-3d-canvas');
+  const isCanvasFocused = (document.activeElement === canvas);
+
+  // If canvas is focused or modifier keys are used: control 3D camera
+  if (isCanvasFocused || e.shiftKey || e.altKey) {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (e.shiftKey) pan3D(-15, 0);
+      else orbit3D(-0.1, 0);
+      return;
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (e.shiftKey) pan3D(15, 0);
+      else orbit3D(0.1, 0);
+      return;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (e.shiftKey) pan3D(0, -15);
+      else orbit3D(0, -0.08);
+      return;
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (e.shiftKey) pan3D(0, 15);
+      else orbit3D(0, 0.08);
+      return;
+    }
+  }
+
+  if (e.key === '+' || e.key === '=') {
+    e.preventDefault();
+    zoom3D(1.15);
+  } else if (e.key === '-' || e.key === '_') {
+    e.preventDefault();
+    zoom3D(0.85);
+  } else if (e.key === 'r' || e.key === 'R') {
+    e.preventDefault();
+    reset3DCamera();
+  } else if (e.key === 't' || e.key === 'T') {
+    e.preventDefault();
+    toggle3DTopView();
+  }
+});
+
+function init3DCanvasIfNeeded() {
+  if (canvas3DInitialized) return;
+  const canvas = document.getElementById('floor-3d-canvas');
+  if (!canvas) return;
+  canvas3DInitialized = true;
+
+  let downX = 0, downY = 0;
+
+  // Mouse Controls
+  canvas.addEventListener('mousedown', (e) => {
+    downX = e.clientX;
+    downY = e.clientY;
+    camera3D.isDragging = true;
+    camera3D.dragMode = (e.button === 2 || e.shiftKey || e.button === 1) ? 'pan' : 'orbit';
+    camera3D.lastX = e.clientX;
+    camera3D.lastY = e.clientY;
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!camera3D.isDragging) return;
+    const dx = e.clientX - camera3D.lastX;
+    const dy = e.clientY - camera3D.lastY;
+    if (camera3D.dragMode === 'orbit') {
+      camera3D.yaw += dx * 0.008;
+      camera3D.pitch = Math.max(0.08, Math.min(1.54, camera3D.pitch + dy * 0.008));
+      camera3D.isTopView = false;
+    } else {
+      camera3D.panX += dx;
+      camera3D.panY += dy;
+    }
+    camera3D.lastX = e.clientX;
+    camera3D.lastY = e.clientY;
+    render3DFloorView();
+  });
+
+  window.addEventListener('mouseup', (e) => {
+    if (!camera3D.isDragging) return;
+    const dist = Math.hypot(e.clientX - downX, e.clientY - downY);
+    camera3D.isDragging = false;
+
+    // Zone click hit-testing (click without drag)
+    if (dist < 6 && e.button === 0) {
+      handleCanvasClick(e.clientX, e.clientY);
+    }
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 0.9 : 1.1;
+    camera3D.distance = Math.max(0.35, Math.min(3.5, camera3D.distance * factor));
+    render3DFloorView();
+  }, { passive: false });
+
+  canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+  });
+
+  // Touch Support: Orbit, Two-finger Pan, Pinch Zoom, Tap Hit-test
+  let touchStartDist = 0;
+  let touchLastMidX = 0;
+  let touchLastMidY = 0;
+  let touchStartTime = 0;
+  let touchDownX = 0;
+  let touchDownY = 0;
+
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      touchDownX = e.touches[0].clientX;
+      touchDownY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+      camera3D.isDragging = true;
+      camera3D.dragMode = 'orbit';
+      camera3D.lastX = touchDownX;
+      camera3D.lastY = touchDownY;
+    } else if (e.touches.length === 2) {
+      camera3D.isDragging = false;
+      touchStartDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchLastMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      touchLastMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 1 && camera3D.isDragging) {
+      e.preventDefault(); // Prevent page scroll during 1-finger orbit on canvas
+      const dx = e.touches[0].clientX - camera3D.lastX;
+      const dy = e.touches[0].clientY - camera3D.lastY;
+      camera3D.yaw += dx * 0.008;
+      camera3D.pitch = Math.max(0.08, Math.min(1.54, camera3D.pitch + dy * 0.008));
+      camera3D.isTopView = false;
+      camera3D.lastX = e.touches[0].clientX;
+      camera3D.lastY = e.touches[0].clientY;
+      render3DFloorView();
+    } else if (e.touches.length === 2) {
+      e.preventDefault(); // Prevent page zoom during 2-finger gesture on canvas
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const currentMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const currentMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+      // Two-finger touch pan
+      const panDx = currentMidX - touchLastMidX;
+      const panDy = currentMidY - touchLastMidY;
+      camera3D.panX += panDx;
+      camera3D.panY += panDy;
+      touchLastMidX = currentMidX;
+      touchLastMidY = currentMidY;
+
+      // Pinch zoom
+      if (touchStartDist > 0) {
+        const factor = currentDist / touchStartDist;
+        camera3D.distance = Math.max(0.35, Math.min(3.5, camera3D.distance * factor));
+        touchStartDist = currentDist;
+      }
+      render3DFloorView();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+      if (camera3D.isDragging) {
+        const dist = Math.hypot(camera3D.lastX - touchDownX, camera3D.lastY - touchDownY);
+        const elapsed = Date.now() - touchStartTime;
+        // Tap hit-testing
+        if (dist < 8 && elapsed < 350) {
+          handleCanvasClick(touchDownX, touchDownY);
+        }
+      }
+      camera3D.isDragging = false;
+      touchStartDist = 0;
+    } else if (e.touches.length === 1) {
+      camera3D.isDragging = true;
+      camera3D.dragMode = 'orbit';
+      camera3D.lastX = e.touches[0].clientX;
+      camera3D.lastY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+}
+
+function render3DFloorView() {
+  const canvas = document.getElementById('floor-3d-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const W = Math.round((rect.width || 800) * dpr);
+  const H = Math.round((rect.height || 500) * dpr);
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width = W;
+    canvas.height = H;
+  }
+
+  // Clear canvas background
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0B132B';
+  ctx.fillRect(0, 0, W, H);
+
+  interactive3DPolygons = [];
+
+  const [minX, maxX, minY, maxY] = runGeometry.bounds || [0, 10, 0, 6];
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const spanX = maxX - minX || 1.0;
+  const spanY = maxY - minY || 1.0;
+  const maxSpan = Math.max(spanX, spanY);
+
+  // Dynamic Scale Handling: support dwell values above 20 seconds
+  const maxScaleDwellSec = SpatialPlayerEngine.computeMaxScaleDwell(runGeometry.zone_dwell);
+  window._maxScaleDwellSec = maxScaleDwellSec;
+  const zScale = (0.35 * maxSpan) / maxScaleDwellSec;
+
+  // Fit camera framing to geometry and dwell heights
+  const Rxy = Math.hypot(spanX, spanY) / 2;
+  const Zmax = maxScaleDwellSec * zScale;
+  const pitch = camera3D.pitch;
+  const spanGeomX = 2 * Rxy;
+  const spanGeomY = 2 * Rxy * Math.sin(pitch) + Zmax * Math.cos(pitch);
+  const scy = -0.5 * Zmax * Math.cos(pitch);
+  camera3D.scy = scy;
+
+  const margin = 0.80; // Fit comfortably within canvas margins
+  const fitS = Math.min((W * margin) / Math.max(0.1, spanGeomX), (H * margin) / Math.max(0.1, spanGeomY));
+  const S = fitS * camera3D.distance;
+
+  const showZones = document.getElementById('chk-zones').checked;
+  const showTrails = document.getElementById('chk-trails').checked;
+  const showPoints = document.getElementById('chk-points').checked;
+  const showCandidate = document.getElementById('chk-candidate').checked;
+  const densityMode = document.getElementById('sel-density-mode').value;
+
+  const mapping = (timelineData && timelineData.playback_mapping) || [];
+  const currentEntry = mapping[currentSampleIdx] || { observations: [] };
+  const currentObs = currentEntry.observations || [];
+
+  // Update scale HUD badge (explicit whole-run observed dwell)
+  const scaleBadge = document.getElementById('scale-3d-ruler');
+  if (scaleBadge) {
+    scaleBadge.textContent = `Whole-run observed dwell scale: 0s – ${maxScaleDwellSec.toFixed(0)}s (Labelled Seconds Scale)`;
+  }
+
+  // 1. Draw Ground Plane & Coordinate Grid (always at bottom)
+  ctx.strokeStyle = '#1E293B';
+  ctx.lineWidth = 1;
+  const gridStep = 1.0;
+  for (let gx = minX; gx <= maxX + 0.001; gx += gridStep) {
+    const p1 = project3D(gx, minY, 0, cx, cy, S, W, H);
+    const p2 = project3D(gx, maxY, 0, cx, cy, S, W, H);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  }
+  for (let gy = minY; gy <= maxY + 0.001; gy += gridStep) {
+    const p1 = project3D(minX, gy, 0, cx, cy, S, W, H);
+    const p2 = project3D(maxX, gy, 0, cx, cy, S, W, H);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+  }
+
+  // Floor Boundary Perimeter
+  const b0 = project3D(minX, minY, 0, cx, cy, S, W, H);
+  const b1 = project3D(maxX, minY, 0, cx, cy, S, W, H);
+  const b2 = project3D(maxX, maxY, 0, cx, cy, S, W, H);
+  const b3 = project3D(minX, maxY, 0, cx, cy, S, W, H);
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(b0.x, b0.y);
+  ctx.lineTo(b1.x, b1.y);
+  ctx.lineTo(b2.x, b2.y);
+  ctx.lineTo(b3.x, b3.y);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Queue of 3D objects for Painter's algorithm depth sorting
+  const renderQueue = [];
+
+  // 2. Discrete Counted Density Cells
+  if (densityMode !== 'none') {
+    let cs = runGeometry.cell_size;
+    let csX = 0.5, csY = 0.5;
+    if (typeof cs === 'number' && cs > 0) { csX = cs; csY = cs; }
+    else if (Array.isArray(cs) && cs.length === 2) { csX = Number(cs[0]) || 0.5; csY = Number(cs[1]) || 0.5; }
+    const nx = Math.max(1, Math.round((maxX - minX) / csX));
+    const ny = Math.max(1, Math.round((maxY - minY) / csY));
+    const actualCsX = (maxX - minX) / nx;
+    const actualCsY = (maxY - minY) / ny;
+
+    const grid = Array(nx).fill(0).map(() => Array(ny).fill(0));
+    let maxBin = 1;
+    const maxIdx = (densityMode === 'cumulative') ? Math.min(currentSampleIdx, mapping.length - 1) : mapping.length - 1;
+    for (let i = 0; i <= maxIdx; i++) {
+      if (!mapping[i]) continue;
+      (mapping[i].observations || []).forEach(o => {
+        if (!o.floor_point || o.is_out_of_bounds) return;
+        const fx = o.floor_point[0], fy = o.floor_point[1];
+        if (typeof fx !== 'number' || typeof fy !== 'number' || !isFinite(fx) || !isFinite(fy)) return;
+        if (fx < minX || fx > maxX || fy < minY || fy > maxY) return;
+        let cxIdx = (fx >= maxX) ? (nx - 1) : Math.floor((fx - minX) / actualCsX);
+        cxIdx = Math.min(nx - 1, Math.max(0, cxIdx));
+        let cyIdx = (fy >= maxY) ? (ny - 1) : Math.floor((fy - minY) / actualCsY);
+        cyIdx = Math.min(ny - 1, Math.max(0, cyIdx));
+        grid[cxIdx][cyIdx]++;
+        if (grid[cxIdx][cyIdx] > maxBin) maxBin = grid[cxIdx][cyIdx];
+      });
+    }
+
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iy = 0; iy < ny; iy++) {
+        const count = grid[ix][iy];
+        if (count > 0) {
+          const fx0 = minX + ix * actualCsX;
+          const fy0 = minY + iy * actualCsY;
+          const fx1 = fx0 + actualCsX;
+          const fy1 = fy0 + actualCsY;
+          const cp0 = project3D(fx0, fy0, 0.02, cx, cy, S, W, H);
+          const cp1 = project3D(fx1, fy0, 0.02, cx, cy, S, W, H);
+          const cp2 = project3D(fx1, fy1, 0.02, cx, cy, S, W, H);
+          const cp3 = project3D(fx0, fy1, 0.02, cx, cy, S, W, H);
+          const avgDepth = (cp0.depth + cp1.depth + cp2.depth + cp3.depth) / 4;
+          const intensity = Math.min(1.0, count / maxBin);
+          renderQueue.push({
+            type: 'density_cell',
+            depth: avgDepth,
+            pts: [cp0, cp1, cp2, cp3],
+            count: count,
+            intensity: intensity
+          });
+        }
+      }
+    }
+  }
+
+  // 3. Zone Dwell Extrusions & Distinctions (Preserving base identity colors & decluttering labels)
+  if (showZones && runGeometry.zones) {
+    const selZ = runGeometry.selected_zone_id;
+    Object.keys(runGeometry.zones).forEach(zid => {
+      const poly = runGeometry.zones[zid];
+      if (!poly || poly.length < 3) return;
+      const isSel = (zid === selZ);
+      // PRESERVE zone identity color (do not override hue with teal)
+      const baseHex = (runGeometry.zone_colors && runGeometry.zone_colors[zid]) || '#3498DB';
+      const rgb = hexToRgb(baseHex);
+      const zName = (runGeometry.zone_names && runGeometry.zone_names[zid]) || zid;
+
+      const zDwellInfo = (runGeometry.zone_dwell && runGeometry.zone_dwell[zid]) || {};
+      const dwellSec = zDwellInfo.observed_dwell_sec !== undefined ? zDwellInfo.observed_dwell_sec : zDwellInfo.observed_dwell_span_sec;
+      const dwellClass = SpatialPlayerEngine.classifyDwellState(dwellSec, zDwellInfo.dwell_status);
+      const isRecorded = dwellClass.isRecorded;
+      const isZero = dwellClass.isZero;
+
+      if (isRecorded) {
+        // Extruded 3D prism: height = dwellSec * zScale
+        const Hz = dwellSec * zScale;
+        const botPts = poly.map(p => project3D(p[0], p[1], 0, cx, cy, S, W, H));
+        const topPts = poly.map(p => project3D(p[0], p[1], Hz, cx, cy, S, W, H));
+
+        // Side wall quads with directional lighting
+        for (let i = 0; i < poly.length; i++) {
+          const next = (i + 1) % poly.length;
+          const pA = poly[i], pB = poly[next];
+          const edgeDx = pB[0] - pA[0], edgeDy = pB[1] - pA[1];
+          const edgeLen = Math.hypot(edgeDx, edgeDy) || 0.001;
+          const normX = edgeDy / edgeLen, normY = -edgeDx / edgeLen;
+          const lightDot = normX * 0.5 + normY * (-0.6);
+          const shade = Math.max(0.35, Math.min(0.9, 0.6 + lightDot * 0.3));
+
+          const quad = [botPts[i], botPts[next], topPts[next], topPts[i]];
+          const quadDepth = (botPts[i].depth + botPts[next].depth + topPts[next].depth + topPts[i].depth) / 4;
+          renderQueue.push({
+            type: 'zone_wall',
+            depth: quadDepth,
+            zid: zid,
+            poly2D: quad,
+            rgb: rgb,
+            shade: shade,
+            isSel: isSel
+          });
+        }
+
+        // Top cap polygon
+        let topDepthSum = 0;
+        topPts.forEach(p => { topDepthSum += p.depth; });
+        const avgTopDepth = topDepthSum / topPts.length - 0.05;
+        renderQueue.push({
+          type: 'zone_top_cap',
+          depth: avgTopDepth,
+          zid: zid,
+          poly2D: topPts,
+          rgb: rgb,
+          isSel: isSel,
+          zName: zName,
+          dwellSec: dwellSec
+        });
+      } else if (isZero) {
+        // Evaluated Zero: Flat pad at Z=0
+        const botPts = poly.map(p => project3D(p[0], p[1], 0, cx, cy, S, W, H));
+        let depthSum = 0;
+        botPts.forEach(p => { depthSum += p.depth; });
+        renderQueue.push({
+          type: 'zone_zero',
+          depth: depthSum / botPts.length,
+          zid: zid,
+          poly2D: botPts,
+          rgb: rgb,
+          isSel: isSel,
+          zName: zName
+        });
+      } else {
+        // Missing Dwell: Flat dashed outline
+        const botPts = poly.map(p => project3D(p[0], p[1], 0, cx, cy, S, W, H));
+        let depthSum = 0;
+        botPts.forEach(p => { depthSum += p.depth; });
+        renderQueue.push({
+          type: 'zone_missing',
+          depth: depthSum / botPts.length,
+          zid: zid,
+          poly2D: botPts,
+          rgb: rgb,
+          isSel: isSel,
+          zName: zName
+        });
+      }
+    });
+  }
+
+  // 4. Candidate Hotspot Cell (only when candidate cell recorded)
+  if (showCandidate && runGeometry.candidate_hotspot_cell) {
+    const c = runGeometry.candidate_hotspot_cell;
+    const xMin = c.x_min !== undefined ? c.x_min : (c.x_center !== undefined ? c.x_center - 0.25 : null);
+    const xMax = c.x_max !== undefined ? c.x_max : (c.x_center !== undefined ? c.x_center + 0.25 : null);
+    const yMin = c.y_min !== undefined ? c.y_min : (c.y_center !== undefined ? c.y_center - 0.25 : null);
+    const yMax = c.y_max !== undefined ? c.y_max : (c.y_center !== undefined ? c.y_center + 0.25 : null);
+
+    if (xMin !== null && xMax !== null && yMin !== null && yMax !== null) {
+      const Hc = 0.45 * zScale;
+      const cp0 = project3D(xMin, yMin, 0, cx, cy, S, W, H);
+      const cp1 = project3D(xMax, yMin, 0, cx, cy, S, W, H);
+      const cp2 = project3D(xMax, yMax, 0, cx, cy, S, W, H);
+      const cp3 = project3D(xMin, yMax, 0, cx, cy, S, W, H);
+      const tp0 = project3D(xMin, yMin, Hc, cx, cy, S, W, H);
+      const tp1 = project3D(xMax, yMin, Hc, cx, cy, S, W, H);
+      const tp2 = project3D(xMax, yMax, Hc, cx, cy, S, W, H);
+      const tp3 = project3D(xMin, yMax, Hc, cx, cy, S, W, H);
+      const avgCandDepth = (cp0.depth + cp1.depth + cp2.depth + cp3.depth + tp0.depth + tp1.depth + tp2.depth + tp3.depth) / 8;
+      renderQueue.push({
+        type: 'candidate_cell',
+        depth: avgCandDepth,
+        base: [cp0, cp1, cp2, cp3],
+        top: [tp0, tp1, tp2, tp3]
+      });
+    }
+  }
+
+  // 5. Trajectory Trails with Gap Breaking
+  if (showTrails) {
+    const trackHistories = {};
+    const maxHistIdx = Math.min(currentSampleIdx, mapping.length - 1);
+    for (let i = 0; i <= maxHistIdx; i++) {
+      if (!mapping[i]) continue;
+      (mapping[i].observations || []).forEach(o => {
+        if (o.floor_point) {
+          if (!trackHistories[o.track_id]) trackHistories[o.track_id] = [];
+          trackHistories[o.track_id].push({ sampleIdx: i, pt: o.floor_point });
+        }
+      });
+    }
+
+    Object.keys(trackHistories).forEach(tid => {
+      const pts = trackHistories[tid];
+      if (pts.length < 2) return;
+      const isFocused = (selectedTrackId === "all" || selectedTrackId == tid);
+      const segments = SpatialPlayerEngine.segmentTrajectoryTrails(pts);
+      segments.forEach(segment => {
+        const seg3D = segment.map(p => project3D(p.pt[0], p.pt[1], 0.05, cx, cy, S, W, H));
+        let dSum = 0;
+        seg3D.forEach(p => { dSum += p.depth; });
+        renderQueue.push({
+          type: 'trail_segment',
+          depth: dSum / seg3D.length,
+          pts: seg3D,
+          isFocused: isFocused,
+          tid: tid
+        });
+      });
+    });
+  }
+
+  // 6. Active Sample Points
+  if (showPoints) {
+    currentObs.forEach(o => {
+      if (!o.floor_point) return;
+      const isFocused = (selectedTrackId === "all" || selectedTrackId == o.track_id);
+      const pt3D = project3D(o.floor_point[0], o.floor_point[1], 0.08, cx, cy, S, W, H);
+      renderQueue.push({
+        type: 'sample_point',
+        depth: pt3D.depth - 0.1,
+        pt: pt3D,
+        obs: o,
+        isFocused: isFocused
+      });
+    });
+  }
+
+  // 7. Vertical Graduated Seconds Scale (3D Ruler) at (minX, maxY)
+  const rMinX = minX;
+  const rMaxY = maxY;
+  const numRulerTicks = 4;
+  const rulerTicks = [];
+  const tickStep = maxScaleDwellSec / numRulerTicks;
+  for (let t = 0; t <= maxScaleDwellSec + 0.001; t += tickStep) {
+    rulerTicks.push(Math.round(t));
+  }
+  const poleBase = project3D(rMinX, rMaxY, 0, cx, cy, S, W, H);
+  const poleTop = project3D(rMinX, rMaxY, maxScaleDwellSec * zScale, cx, cy, S, W, H);
+  renderQueue.push({
+    type: 'dwell_ruler',
+    depth: (poleBase.depth + poleTop.depth) / 2,
+    base: poleBase,
+    top: poleTop,
+    ticks: rulerTicks.map(sec => {
+      const pTick = project3D(rMinX, rMaxY, sec * zScale, cx, cy, S, W, H);
+      const pTickEnd = project3D(rMinX - maxSpan * 0.035, rMaxY, sec * zScale, cx, cy, S, W, H);
+      return { sec: sec, start: pTick, end: pTickEnd };
+    })
+  });
+
+  // Sort queue by depth descending (furthest depth drawn first -> Painter's algorithm)
+  renderQueue.sort((a, b) => b.depth - a.depth);
+
+  // Render sorted elements
+  renderQueue.forEach(item => {
+    if (item.type === 'density_cell') {
+      ctx.fillStyle = `rgba(13, 148, 136, ${(0.18 + item.intensity * 0.65).toFixed(2)})`;
+      ctx.strokeStyle = 'rgba(94, 234, 212, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(item.pts[0].x, item.pts[0].y);
+      ctx.lineTo(item.pts[1].x, item.pts[1].y);
+      ctx.lineTo(item.pts[2].x, item.pts[2].y);
+      ctx.lineTo(item.pts[3].x, item.pts[3].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      if (item.count >= 2 || camera3D.distance > 1.2) {
+        const cxp = (item.pts[0].x + item.pts[1].x + item.pts[2].x + item.pts[3].x) / 4;
+        const cyp = (item.pts[0].y + item.pts[1].y + item.pts[2].y + item.pts[3].y) / 4;
+        ctx.fillStyle = '#5EEAD4';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${item.count}`, cxp, cyp);
+      }
+    } else if (item.type === 'zone_wall') {
+      const r = Math.round(item.rgb.r * item.shade);
+      const g = Math.round(item.rgb.g * item.shade);
+      const b = Math.round(item.rgb.b * item.shade);
+      ctx.fillStyle = item.isSel ? `rgba(${r}, ${g}, ${b}, 0.85)` : `rgba(${r}, ${g}, ${b}, 0.55)`;
+      ctx.strokeStyle = item.isSel ? '#FFFFFF' : `rgba(${item.rgb.r}, ${item.rgb.g}, ${item.rgb.b}, 0.7)`;
+      ctx.lineWidth = item.isSel ? 2.5 : 1;
+      ctx.beginPath();
+      ctx.moveTo(item.poly2D[0].x, item.poly2D[0].y);
+      for (let k = 1; k < item.poly2D.length; k++) {
+        ctx.lineTo(item.poly2D[k].x, item.poly2D[k].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      interactive3DPolygons.push({ zid: item.zid, poly2D: item.poly2D, depth: item.depth });
+    } else if (item.type === 'zone_top_cap') {
+      ctx.fillStyle = item.isSel ? `rgba(${item.rgb.r}, ${item.rgb.g}, ${item.rgb.b}, 0.90)` : `rgba(${item.rgb.r}, ${item.rgb.g}, ${item.rgb.b}, 0.65)`;
+      ctx.strokeStyle = item.isSel ? '#5EEAD4' : `rgb(${item.rgb.r}, ${item.rgb.g}, ${item.rgb.b})`;
+      ctx.lineWidth = item.isSel ? 3.5 : 1.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(item.poly2D[0].x, item.poly2D[0].y);
+      for (let k = 1; k < item.poly2D.length; k++) {
+        ctx.lineTo(item.poly2D[k].x, item.poly2D[k].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Names and dwell states live in the wrapping caption/legend, not overlapping canvas text.
+      if (item.isSel) {
+        const cxp = item.poly2D.reduce((a,p) => a+p.x, 0) / item.poly2D.length;
+        const cyp = item.poly2D.reduce((a,p) => a+p.y, 0) / item.poly2D.length;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', Math.max(12, Math.min(W-12, cxp)), Math.max(12, Math.min(H-12, cyp)));
+      }
+
+      interactive3DPolygons.push({ zid: item.zid, poly2D: item.poly2D, depth: item.depth });
+    } else if (item.type === 'zone_zero') {
+      ctx.fillStyle = item.isSel ? 'rgba(148, 163, 184, 0.45)' : 'rgba(51, 65, 85, 0.55)';
+      ctx.strokeStyle = item.isSel ? '#5EEAD4' : 'rgba(148, 163, 184, 0.85)';
+      ctx.lineWidth = item.isSel ? 3 : 1.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(item.poly2D[0].x, item.poly2D[0].y);
+      for (let k = 1; k < item.poly2D.length; k++) {
+        ctx.lineTo(item.poly2D[k].x, item.poly2D[k].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Names and dwell states live in the wrapping caption/legend, not overlapping canvas text.
+      if (item.isSel) {
+        const cxp = item.poly2D.reduce((a,p) => a+p.x, 0) / item.poly2D.length;
+        const cyp = item.poly2D.reduce((a,p) => a+p.y, 0) / item.poly2D.length;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', Math.max(12, Math.min(W-12, cxp)), Math.max(12, Math.min(H-12, cyp)));
+      }
+
+      interactive3DPolygons.push({ zid: item.zid, poly2D: item.poly2D, depth: item.depth });
+    } else if (item.type === 'zone_missing') {
+      ctx.fillStyle = item.isSel ? 'rgba(71, 85, 105, 0.35)' : 'rgba(30, 41, 59, 0.35)';
+      ctx.strokeStyle = item.isSel ? '#5EEAD4' : 'rgba(148, 163, 184, 0.7)';
+      ctx.lineWidth = item.isSel ? 3 : 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(item.poly2D[0].x, item.poly2D[0].y);
+      for (let k = 1; k < item.poly2D.length; k++) {
+        ctx.lineTo(item.poly2D[k].x, item.poly2D[k].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Names and dwell states live in the wrapping caption/legend, not overlapping canvas text.
+      if (item.isSel) {
+        const cxp = item.poly2D.reduce((a,p) => a+p.x, 0) / item.poly2D.length;
+        const cyp = item.poly2D.reduce((a,p) => a+p.y, 0) / item.poly2D.length;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('★', Math.max(12, Math.min(W-12, cxp)), Math.max(12, Math.min(H-12, cyp)));
+      }
+
+      interactive3DPolygons.push({ zid: item.zid, poly2D: item.poly2D, depth: item.depth });
+    } else if (item.type === 'candidate_cell') {
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.28)';
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 3]);
+
+      // Draw top and sides of candidate cell
+      ctx.beginPath();
+      ctx.moveTo(item.top[0].x, item.top[0].y);
+      ctx.lineTo(item.top[1].x, item.top[1].y);
+      ctx.lineTo(item.top[2].x, item.top[2].y);
+      ctx.lineTo(item.top[3].x, item.top[3].y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      for (let e = 0; e < 4; e++) {
+        ctx.beginPath();
+        ctx.moveTo(item.base[e].x, item.base[e].y);
+        ctx.lineTo(item.top[e].x, item.top[e].y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      const cxp = (item.top[0].x + item.top[1].x + item.top[2].x + item.top[3].x) / 4;
+      const cyp = (item.top[0].y + item.top[1].y + item.top[2].y + item.top[3].y) / 4;
+      ctx.fillStyle = '#F59E0B';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('★ Candidate Cell', cxp, cyp - 6);
+    } else if (item.type === 'trail_segment') {
+      ctx.strokeStyle = item.isFocused ? '#0D9488' : '#475569';
+      ctx.lineWidth = item.isFocused ? (selectedTrackId !== 'all' ? 3.5 : 2.5) : 1.5;
+      ctx.beginPath();
+      ctx.moveTo(item.pts[0].x, item.pts[0].y);
+      for (let k = 1; k < item.pts.length; k++) {
+        ctx.lineTo(item.pts[k].x, item.pts[k].y);
+      }
+      ctx.stroke();
+    } else if (item.type === 'sample_point') {
+      if (item.isFocused && selectedTrackId !== 'all') {
+        ctx.fillStyle = 'rgba(13, 148, 136, 0.3)';
+        ctx.strokeStyle = '#0D9488';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(item.pt.x, item.pt.y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = item.isFocused ? '#0D9488' : '#64748B';
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(item.pt.x, item.pt.y, item.isFocused ? 7 : 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(`#${item.obs.track_id}`, item.pt.x, item.pt.y - 8);
+    } else if (item.type === 'dwell_ruler') {
+      ctx.strokeStyle = '#5EEAD4';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(item.base.x, item.base.y);
+      ctx.lineTo(item.top.x, item.top.y);
+      ctx.stroke();
+
+      item.ticks.forEach(t => {
+        ctx.beginPath();
+        ctx.moveTo(t.start.x, t.start.y);
+        ctx.lineTo(t.end.x, t.end.y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#5EEAD4';
+        ctx.font = 'bold 9px monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${t.sec}s`, t.end.x - 3, t.end.y);
+      });
+
+      ctx.fillStyle = '#5EEAD4';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('Whole-run dwell (s)', item.top.x, item.top.y - 6);
+    }
+  });
+
+  update3DLegend();
+  floorPointBadge.textContent = `${currentObs.length} track(s) active`;
+  updateObservationDetails(currentEntry);
+}
+
+// Floor coordinate mapping to SVG viewBox (800 x 500)
+function floorToSvg(fx, fy) {
+  const [minX, maxX, minY, maxY] = runGeometry.bounds || [0, 10, 0, 6];
+  const padding = 45;
+  const renderW = 800 - padding * 2;
+  const renderH = 500 - padding * 2;
+  const normX = (fx - minX) / (maxX - minX || 1.0);
+  const normY = (fy - minY) / (maxY - minY || 1.0);
+  // Invert Y so 0 is at bottom
+  const sx = padding + normX * renderW;
+  const sy = 500 - (padding + normY * renderH);
+  return { x: Math.round(sx * 10) / 10, y: Math.round(sy * 10) / 10 };
+}
+
+// Render Camera Projected Geofences and Active Detections
+function renderCameraOverlay() {
+  if (!camLayerZones || !camLayerActive) return;
+  camLayerZones.innerHTML = '';
+  camLayerActive.innerHTML = '';
+
+  const imgW = (runGeometry.image_size && runGeometry.image_size[0]) || 920;
+  const imgH = (runGeometry.image_size && runGeometry.image_size[1]) || 680;
+  cameraSvg.setAttribute('viewBox', `0 0 ${imgW} ${imgH}`);
+
+  const showZones = document.getElementById('chk-zones').checked;
+  const showPoints = document.getElementById('chk-points').checked;
+
+  const camPolys = runGeometry.camera_polygons || {};
+  const hasCamPolys = Object.keys(camPolys).length > 0;
+
+  if (hasCamPolys) {
+    hudCamStatus.textContent = "Projected using configured homography";
+    hudCamStatus.style.color = "#5EEAD4";
+  } else {
+    hudCamStatus.textContent = "Camera projection unavailable (uncalibrated)";
+    hudCamStatus.style.color = "#FCD34D";
+  }
+
+  // 1. Render Camera Projected Zones
+  if (showZones && hasCamPolys) {
+    const selZ = runGeometry.selected_zone_id;
+    Object.keys(camPolys).forEach(zid => {
+      const poly = camPolys[zid];
+      if (!poly || poly.length < 3) return;
+      const isSel = (zid === selZ);
+      const color = isSel ? '#0D9488' : ((runGeometry.zone_colors && runGeometry.zone_colors[zid]) || '#3498DB');
+      const zName = (runGeometry.zone_names && runGeometry.zone_names[zid]) || zid;
+
+      const ptsStr = poly.map(p => `${p[0]},${p[1]}`).join(' ');
+      const pElem = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      pElem.setAttribute('points', ptsStr);
+      pElem.setAttribute('fill', isSel ? 'rgba(13, 148, 136, 0.28)' : color);
+      pElem.setAttribute('fill-opacity', isSel ? '0.35' : '0.12');
+      pElem.setAttribute('stroke', color);
+      pElem.setAttribute('stroke-width', isSel ? '3.5' : '1.5');
+      pElem.setAttribute('stroke-dasharray', isSel ? '6 3' : '3 2');
+      if (isSel) {
+        pElem.setAttribute('filter', 'url(#cam-glow)');
+      }
+      pElem.style.pointerEvents = 'auto';
+      pElem.style.cursor = 'pointer';
+      pElem.onclick = (e) => {
+        e.stopPropagation();
+        selectZone(zid);
+      };
+      camLayerZones.appendChild(pElem);
+
+      // Centroid label
+      let cx = 0, cy = 0;
+      poly.forEach(p => { cx += p[0]; cy += p[1]; });
+      cx /= poly.length;
+      cy /= poly.length;
+
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute('x', cx);
+      text.setAttribute('y', cy);
+      text.setAttribute('fill', '#FFFFFF');
+      text.setAttribute('font-size', isSel ? '13' : '11');
+      text.setAttribute('font-weight', isSel ? '700' : '600');
+      text.setAttribute('text-anchor', 'middle');
+      text.style.pointerEvents = 'auto';
+      text.style.cursor = 'pointer';
+      text.onclick = (e) => {
+        e.stopPropagation();
+        selectZone(zid);
+      };
+      text.textContent = isSel ? `★ ${zName}` : zName;
+      camLayerZones.appendChild(text);
+    });
+  }
+
+  // 2. Active Sample Point bounding box / ground point in Camera View
+  if (showPoints && timelineData && timelineData.playback_mapping) {
+    const currentEntry = timelineData.playback_mapping[currentSampleIdx] || { observations: [] };
+    const currentObs = currentEntry.observations || [];
+    currentObs.forEach(o => {
+      const isFocused = (selectedTrackId === "all" || selectedTrackId == o.track_id);
+      if (o.bbox) {
+        const [x1, y1, x2, y2] = o.bbox;
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute('x', x1);
+        rect.setAttribute('y', y1);
+        rect.setAttribute('width', Math.max(1, x2 - x1));
+        rect.setAttribute('height', Math.max(1, y2 - y1));
+        rect.setAttribute('fill', isFocused ? 'rgba(13, 148, 136, 0.15)' : 'none');
+        rect.setAttribute('stroke', isFocused ? '#0D9488' : 'rgba(255, 255, 255, 0.45)');
+        rect.setAttribute('stroke-width', isFocused ? '2.5' : '1.2');
+        camLayerActive.appendChild(rect);
+
+        const lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        lbl.setAttribute('x', x1);
+        lbl.setAttribute('y', Math.max(12, y1 - 4));
+        lbl.setAttribute('fill', isFocused ? '#5EEAD4' : '#CBD5E1');
+        lbl.setAttribute('font-size', '11');
+        lbl.setAttribute('font-family', 'monospace');
+        lbl.setAttribute('font-weight', '700');
+        lbl.textContent = `#${o.track_id}`;
+        camLayerActive.appendChild(lbl);
+      }
+      if (o.image_ground_point) {
+        const [gx, gy] = o.image_ground_point;
+        const circ = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circ.setAttribute('cx', gx);
+        circ.setAttribute('cy', gy);
+        circ.setAttribute('r', isFocused ? '6' : '3.5');
+        circ.setAttribute('fill', isFocused ? '#0D9488' : '#FFFFFF');
+        circ.setAttribute('stroke', '#FFFFFF');
+        circ.setAttribute('stroke-width', '1.5');
+        camLayerActive.appendChild(circ);
+      }
+    });
+  }
+}
+
+// Render the synchronized floor plan
+function renderFloorMap() {
+  if (!timelineData || !timelineData.playback_mapping) return;
+
+  const showZones = document.getElementById('chk-zones').checked;
+  const showTrails = document.getElementById('chk-trails').checked;
+  const showPoints = document.getElementById('chk-points').checked;
+  const showCandidate = document.getElementById('chk-candidate').checked;
+  const densityMode = document.getElementById('sel-density-mode').value;
+
+  layerZones.innerHTML = '';
+  layerTrails.innerHTML = '';
+  layerPoints.innerHTML = '';
+  layerCandidate.innerHTML = '';
+  layerDensity.innerHTML = '';
+
+  const mapping = timelineData.playback_mapping;
+  const currentEntry = mapping[currentSampleIdx] || { observations: [] };
+  const currentObs = currentEntry.observations || [];
+
+  // 1. Density Layer (Discrete Bins with strict compute_density_grid parity)
+  if (densityMode !== 'none') {
+    const [minX, maxX, minY, maxY] = runGeometry.bounds || [0, 10, 0, 6];
+    let cs = runGeometry.cell_size;
+    let csX = 0.5, csY = 0.5;
+    if (typeof cs === 'number' && cs > 0) {
+      csX = cs; csY = cs;
+    } else if (Array.isArray(cs) && cs.length === 2) {
+      csX = Number(cs[0]) || 0.5; csY = Number(cs[1]) || 0.5;
+    }
+    const nx = Math.max(1, Math.round((maxX - minX) / csX));
+    const ny = Math.max(1, Math.round((maxY - minY) / csY));
+    const actualCsX = (maxX - minX) / nx;
+    const actualCsY = (maxY - minY) / ny;
+
+    const grid = Array(nx).fill(0).map(() => Array(ny).fill(0));
+    let maxBin = 1;
+
+    // Collect points up to current sample (or full run)
+    const maxIdx = (densityMode === 'cumulative') ? currentSampleIdx : mapping.length - 1;
+    for (let i = 0; i <= maxIdx; i++) {
+      (mapping[i].observations || []).forEach(o => {
+        if (!o.floor_point || o.is_out_of_bounds) return;
+        const fx = o.floor_point[0];
+        const fy = o.floor_point[1];
+        if (typeof fx !== 'number' || typeof fy !== 'number' || !isFinite(fx) || !isFinite(fy)) return;
+        // Never clamp out-of-bounds points into the grid
+        if (fx < minX || fx > maxX || fy < minY || fy > maxY) return;
+
+        let cx = (fx >= maxX) ? (nx - 1) : Math.floor((fx - minX) / actualCsX);
+        cx = Math.min(nx - 1, Math.max(0, cx));
+        let cy = (fy >= maxY) ? (ny - 1) : Math.floor((fy - minY) / actualCsY);
+        cy = Math.min(ny - 1, Math.max(0, cy));
+
+        grid[cx][cy]++;
+        if (grid[cx][cy] > maxBin) maxBin = grid[cx][cy];
+      });
+    }
+
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iy = 0; iy < ny; iy++) {
+        const count = grid[ix][iy];
+        if (count > 0) {
+          const fx0 = minX + ix * actualCsX;
+          const fy0 = minY + iy * actualCsY;
+          const fx1 = fx0 + actualCsX;
+          const fy1 = fy0 + actualCsY;
+          const pTopLeft = floorToSvg(fx0, fy1);
+          const pBotRight = floorToSvg(fx1, fy0);
+          const w = Math.abs(pBotRight.x - pTopLeft.x);
+          const h = Math.abs(pBotRight.y - pTopLeft.y);
+
+          const intensity = Math.min(1.0, count / maxBin);
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute('x', pTopLeft.x);
+          rect.setAttribute('y', pTopLeft.y);
+          rect.setAttribute('width', w);
+          rect.setAttribute('height', h);
+          rect.setAttribute('fill', '#0D9488');
+          rect.setAttribute('fill-opacity', (0.15 + intensity * 0.65).toFixed(2));
+          layerDensity.appendChild(rect);
+        }
+      }
+    }
+  }
+
+  // 2. Zone Polygons
+  if (showZones && runGeometry.zones) {
+    const selZ = runGeometry.selected_zone_id;
+    Object.keys(runGeometry.zones).forEach(zid => {
+      const poly = runGeometry.zones[zid];
+      if (!poly || poly.length < 3) return;
+      const pts = poly.map(pt => {
+        const sp = floorToSvg(pt[0], pt[1]);
+        return `${sp.x},${sp.y}`;
+      }).join(' ');
+
+      const isSel = (zid === selZ);
+      const color = isSel ? '#0D9488' : ((runGeometry.zone_colors && runGeometry.zone_colors[zid]) || '#3498DB');
+      const zName = (runGeometry.zone_names && runGeometry.zone_names[zid]) || zid;
+
+      const pElem = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+      pElem.setAttribute('points', pts);
+      pElem.setAttribute('fill', isSel ? 'rgba(13, 148, 136, 0.28)' : color);
+      pElem.setAttribute('fill-opacity', isSel ? '0.35' : '0.22');
+      pElem.setAttribute('stroke', color);
+      pElem.setAttribute('stroke-width', isSel ? '3.5' : '1.5');
+      pElem.setAttribute('stroke-dasharray', isSel ? '6 3' : '4 2');
+      if (isSel) {
+        pElem.setAttribute('filter', 'url(#glow)');
+      }
+      pElem.style.cursor = 'pointer';
+      pElem.onclick = (e) => {
+        e.stopPropagation();
+        selectZone(zid);
+      };
+      layerZones.appendChild(pElem);
+
+      // Centroid label
+      let cx = 0, cy = 0;
+      poly.forEach(pt => { const sp = floorToSvg(pt[0], pt[1]); cx += sp.x; cy += sp.y; });
+      cx /= poly.length;
+      cy /= poly.length;
+
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute('x', cx);
+      text.setAttribute('y', cy);
+      text.setAttribute('fill', '#F8FAFC');
+      text.setAttribute('font-size', isSel ? '12' : '11');
+      text.setAttribute('font-weight', isSel ? '700' : '600');
+      text.setAttribute('text-anchor', 'middle');
+      text.style.cursor = 'pointer';
+      text.onclick = (e) => {
+        e.stopPropagation();
+        selectZone(zid);
+      };
+      text.textContent = isSel ? `★ ${zName}` : zName;
+      layerZones.appendChild(text);
+    });
+  }
+
+  // 3. Candidate Hotspot Cell
+  if (showCandidate && runGeometry.candidate_hotspot_cell) {
+    const c = runGeometry.candidate_hotspot_cell;
+    const xMin = c.x_min !== undefined ? c.x_min : (c.x_center !== undefined ? c.x_center - 0.25 : null);
+    const xMax = c.x_max !== undefined ? c.x_max : (c.x_center !== undefined ? c.x_center + 0.25 : null);
+    const yMin = c.y_min !== undefined ? c.y_min : (c.y_center !== undefined ? c.y_center - 0.25 : null);
+    const yMax = c.y_max !== undefined ? c.y_max : (c.y_center !== undefined ? c.y_center + 0.25 : null);
+
+    if (xMin !== null && xMax !== null && yMin !== null && yMax !== null) {
+      const pTL = floorToSvg(xMin, yMax);
+      const pBR = floorToSvg(xMax, yMin);
+      const w = Math.abs(pBR.x - pTL.x);
+      const h = Math.abs(pBR.y - pTL.y);
+
+      const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      r.setAttribute('x', pTL.x);
+      r.setAttribute('y', pTL.y);
+      r.setAttribute('width', w);
+      r.setAttribute('height', h);
+      r.setAttribute('fill', 'rgba(245, 158, 11, 0.25)');
+      r.setAttribute('stroke', '#F59E0B');
+      r.setAttribute('stroke-width', '2');
+      r.setAttribute('stroke-dasharray', '3 3');
+      layerCandidate.appendChild(r);
+
+      const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      t.setAttribute('x', pTL.x + w / 2);
+      t.setAttribute('y', pTL.y - 4);
+      t.setAttribute('fill', '#F59E0B');
+      t.setAttribute('font-size', '10');
+      t.setAttribute('font-weight', '700');
+      t.setAttribute('text-anchor', 'middle');
+      t.textContent = "★ Candidate Cell";
+      layerCandidate.appendChild(t);
+    }
+  }
+
+  // 4. Trajectory Trails up to currentSampleIdx
+  if (showTrails) {
+    const trackHistories = {};
+    for (let i = 0; i <= currentSampleIdx; i++) {
+      const entryObs = mapping[i].observations || [];
+      entryObs.forEach(o => {
+        if (o.floor_point) {
+          if (!trackHistories[o.track_id]) trackHistories[o.track_id] = [];
+          trackHistories[o.track_id].push({ sampleIdx: i, pt: o.floor_point });
+        }
+      });
+    }
+
+    Object.keys(trackHistories).forEach(tid => {
+      const pts = trackHistories[tid];
+      if (pts.length < 2) return;
+      const isFocused = selectedTrackId === "all" || selectedTrackId == tid;
+      const segments = SpatialPlayerEngine.segmentTrajectoryTrails(pts);
+      segments.forEach(segment => {
+        renderTrailSegment(segment, tid, isFocused);
+      });
+    });
+  }
+
+  // 5. Active Sample Points
+  if (showPoints) {
+    currentObs.forEach(o => {
+      if (!o.floor_point) return;
+      const sp = floorToSvg(o.floor_point[0], o.floor_point[1]);
+      const isFocused = selectedTrackId === "all" || selectedTrackId == o.track_id;
+
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+      if (isFocused && selectedTrackId != "all") {
+        const beacon = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        beacon.setAttribute('cx', sp.x);
+        beacon.setAttribute('cy', sp.y);
+        beacon.setAttribute('r', '14');
+        beacon.setAttribute('fill', 'rgba(13, 148, 136, 0.3)');
+        beacon.setAttribute('stroke', '#0D9488');
+        beacon.setAttribute('stroke-width', '1.5');
+        g.appendChild(beacon);
+      }
+
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute('cx', sp.x);
+      dot.setAttribute('cy', sp.y);
+      dot.setAttribute('r', isFocused ? '8' : '5');
+      dot.setAttribute('fill', isFocused ? '#0D9488' : '#64748B');
+      dot.setAttribute('stroke', '#FFFFFF');
+      dot.setAttribute('stroke-width', '2');
+      dot.setAttribute('filter', isFocused ? 'url(#glow)' : '');
+      g.appendChild(dot);
+
+      const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      label.setAttribute('x', sp.x);
+      label.setAttribute('y', sp.y - 12);
+      label.setAttribute('fill', '#FFFFFF');
+      label.setAttribute('font-size', '11');
+      label.setAttribute('font-weight', '700');
+      label.setAttribute('text-anchor', 'middle');
+      label.textContent = `#${o.track_id}`;
+      g.appendChild(label);
+
+      layerPoints.appendChild(g);
+    });
+  }
+
+  floorPointBadge.textContent = `${currentObs.length} track(s) active`;
+  updateObservationDetails(currentEntry);
+}
+
+function renderTrailSegment(pts, tid, isFocused) {
+  if (pts.length < 2) return;
+  const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+  const ptsStr = pts.map(p => {
+    const sp = floorToSvg(p.pt[0], p.pt[1]);
+    return `${sp.x},${sp.y}`;
+  }).join(' ');
+
+  polyline.setAttribute('points', ptsStr);
+  polyline.setAttribute('fill', 'none');
+  polyline.setAttribute('stroke', isFocused ? '#0D9488' : '#475569');
+  polyline.setAttribute('stroke-width', isFocused ? (selectedTrackId != "all" ? '3.5' : '2.5') : '1.5');
+  polyline.setAttribute('stroke-opacity', isFocused ? '0.9' : '0.4');
+  layerTrails.appendChild(polyline);
+}
+
+// Update Observation Detail Card
+function updateObservationDetails(entry) {
+  const currentObs = entry.observations || [];
+  let targetObs = null;
+  let trackSummary = null;
+  if (selectedTrackId !== "all" && timelineData && timelineData.tracks_summary) {
+    trackSummary = timelineData.tracks_summary[selectedTrackId];
+  }
+
+  if (selectedTrackId !== "all") {
+    targetObs = currentObs.find(o => o.track_id == selectedTrackId);
+  } else if (currentObs.length > 0) {
+    targetObs = currentObs[0];
+  }
+
+  const valTrack = document.getElementById('val-track-id');
+  const valZone = document.getElementById('val-zone');
+  const valFloor = document.getElementById('val-floor-pos');
+  const valImg = document.getElementById('val-image-pos');
+  const valConf = document.getElementById('val-confidence');
+  const gapWarning = document.getElementById('gap-warning');
+
+  if (targetObs) {
+    valTrack.textContent = `Track #${targetObs.track_id}`;
+    valZone.textContent = targetObs.assigned_zone ? (runGeometry.zone_names[targetObs.assigned_zone] || targetObs.assigned_zone) : "Unassigned (Out of zone)";
+    valZone.style.color = targetObs.assigned_zone ? (runGeometry.zone_colors[targetObs.assigned_zone] || '#0D9488') : '#64748B';
+    valFloor.textContent = targetObs.floor_point ? `[${targetObs.floor_point[0]}, ${targetObs.floor_point[1]}] units` : "Not projected";
+    valImg.textContent = targetObs.image_ground_point ? `[${targetObs.image_ground_point[0]}, ${targetObs.image_ground_point[1]}] px` : "N/A";
+    valConf.textContent = targetObs.confidence !== null && targetObs.confidence !== undefined ? `${(targetObs.confidence * 100).toFixed(1)}%` : "N/A";
+    gapWarning.style.display = "none";
+  } else {
+    valFloor.textContent = "N/A";
+    valImg.textContent = "N/A";
+    valConf.textContent = "N/A";
+
+    if (selectedTrackId !== "all" && trackSummary) {
+      valTrack.textContent = `Track #${selectedTrackId}`;
+      const firstIdx = trackSummary.first_sample_index !== undefined ? trackSummary.first_sample_index : 0;
+      const lastIdx = trackSummary.last_sample_index !== undefined ? trackSummary.last_sample_index : 0;
+
+      if (currentSampleIdx < firstIdx || currentSampleIdx > lastIdx) {
+        valZone.textContent = "No observation at this time";
+        valZone.style.color = '#94A3B8';
+        gapWarning.style.display = "none";
+      } else {
+        // Within active span, but unobserved at this specific sample
+        valZone.textContent = "No observed detection at this sample";
+        valZone.style.color = '#DC2626';
+        gapWarning.textContent = "⚠️ Unobserved Sample: No detection recorded for Track #" + selectedTrackId + " at sample " + (currentSampleIdx + 1) + ".";
+        gapWarning.style.display = "flex";
+      }
+    } else {
+      valTrack.textContent = "None";
+      valZone.textContent = "No observation at this time";
+      valZone.style.color = '#94A3B8';
+      gapWarning.style.display = "none";
+    }
+  }
+}
+
+// Seek to a specific sample index
+function seekToSample(idx, syncVideo = true) {
+  if (!timelineData || !timelineData.playback_mapping) return;
+  idx = Math.max(0, Math.min(totalSamples - 1, idx));
+  currentSampleIdx = idx;
+  slider.value = idx;
+
+  const entry = timelineData.playback_mapping[idx];
+  if (!entry) return;
+
+  lblSampleIdx.textContent = `${idx + 1} / ${totalSamples}`;
+  lblSourceTime.textContent = `${entry.source_timestamp_sec.toFixed(2)}s`;
+  lblNativeFrame.textContent = entry.source_frame_idx;
+  lblPlayTime.textContent = `${entry.playback_time_sec.toFixed(2)}s`;
+  hudText.textContent = `Frame: ${entry.source_frame_idx} | Time: ${entry.source_timestamp_sec.toFixed(2)}s`;
+
+  if (syncVideo && video) {
+    if (!isNaN(video.duration) && video.duration > 0 && video.readyState >= 1) {
+      if (Math.abs(video.currentTime - entry.playback_time_sec) > 0.08) {
+        video.currentTime = entry.playback_time_sec;
+      }
+      pendingVideoSeekTime = null;
+    } else {
+      pendingVideoSeekTime = entry.playback_time_sec;
+    }
+  }
+
+  renderCurrentFloorView();
+  renderCameraOverlay();
+}
+
+function stepSample(delta) {
+  if (isPlaying) togglePlay();
+  seekToSample(currentSampleIdx + delta);
+}
+
+function togglePlay() {
+  if (!video) return;
+  if (video.paused) {
+    video.play().then(() => {
+      isPlaying = true;
+      btnPlay.textContent = "⏸ Pause";
+      videoStateBadge.textContent = "Playing";
+    }).catch(err => {
+      console.warn("Video play error:", err);
+    });
+  } else {
+    video.pause();
+    isPlaying = false;
+    btnPlay.textContent = "▶ Play";
+    videoStateBadge.textContent = "Paused";
+  }
+}
+
+function onTrackSelectChange() {
+  selectedTrackId = selTrack.value;
+  renderCurrentFloorView();
+  renderCameraOverlay();
+  sendComponentValue({
+    action: "select_track",
+    track_id: selectedTrackId,
+    sample_index: currentSampleIdx,
+    timestamp: Date.now()
+  });
+}
+
+// Video Time Synchronization Listener
+video.addEventListener('timeupdate', () => {
+  if (pendingVideoSeekTime !== null) return;
+  if (!timelineData || !timelineData.playback_mapping) return;
+  const t = video.currentTime;
+  const mapping = timelineData.playback_mapping;
+  let bestIdx = 0;
+  let minDiff = 999999;
+  for (let i = 0; i < mapping.length; i++) {
+    const diff = Math.abs(mapping[i].playback_time_sec - t);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestIdx = i;
+    }
+  }
+  if (bestIdx !== currentSampleIdx) {
+    seekToSample(bestIdx, false); // don't feedback seek to video
+  }
+});
+
+video.addEventListener('error', () => { videoStateBadge.textContent = 'Video could not load · sample exploration available'; });
+video.addEventListener('loadedmetadata', () => { 
+  videoStateBadge.textContent = 'Ready'; 
+  if (pendingVideoSeekTime !== null && !isNaN(pendingVideoSeekTime)) {
+    video.currentTime = pendingVideoSeekTime;
+    pendingVideoSeekTime = null;
+  } else if (timelineData && timelineData.playback_mapping && timelineData.playback_mapping[currentSampleIdx]) {
+    video.currentTime = timelineData.playback_mapping[currentSampleIdx].playback_time_sec;
+  }
+  renderCameraOverlay();
+});
+
+video.addEventListener('canplay', () => {
+  if (pendingVideoSeekTime !== null && !isNaN(pendingVideoSeekTime)) {
+    video.currentTime = pendingVideoSeekTime;
+    pendingVideoSeekTime = null;
+  }
+});
+
+video.addEventListener('play', () => {
+  isPlaying = true;
+  btnPlay.textContent = "⏸ Pause";
+  videoStateBadge.textContent = "Playing";
+});
+
+video.addEventListener('pause', () => {
+  isPlaying = false;
+  btnPlay.textContent = "▶ Play";
+  videoStateBadge.textContent = "Paused";
+});
+
+slider.addEventListener('input', (e) => {
+  seekToSample(parseInt(e.target.value, 10));
+});
+
+// Keyboard controls
+window.addEventListener('keydown', (e) => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    togglePlay();
+  } else if (e.code === 'ArrowLeft') {
+    e.preventDefault();
+    stepSample(-1);
+  } else if (e.code === 'ArrowRight') {
+    e.preventDefault();
+    stepSample(1);
+  } else if (e.code === 'Home') {
+    e.preventDefault();
+    seekToSample(0);
+  } else if (e.code === 'End') {
+    e.preventDefault();
+    seekToSample(totalSamples - 1);
+  }
+});
+
+// Streamlit Render Message Listener
+window.addEventListener("message", function(event) {
+  if (event.data.type === "streamlit:render") {
+    const args = event.data.args || {};
+    if (args.run_geometry) {
+      runGeometry = args.run_geometry;
+      if (runGeometry.default_perspective && !userSelectedPerspective) {
+        setFloorPerspective(runGeometry.default_perspective, false);
+      }
+      if (runGeometry.selected_track_id !== undefined && runGeometry.selected_track_id !== null) {
+        selectedTrackId = String(runGeometry.selected_track_id);
+        if (selTrack) selTrack.value = selectedTrackId;
+      }
+      updateSelectedZoneHud();
+      const isoBox = document.getElementById('floor-iso-box');
+      if (isoBox && runGeometry.iso_svg) {
+        isoBox.innerHTML = runGeometry.iso_svg;
+      }
+    }
+    if (args.timeline_data) {
+      timelineData = args.timeline_data;
+      totalSamples = (timelineData.playback_mapping || []).length;
+      slider.max = Math.max(0, totalSamples - 1);
+
+      // Populate track selector
+      const tracks = timelineData.tracks_summary || {};
+      const currentVal = selTrack.value;
+      selTrack.innerHTML = '<option value="all">Focus: All Active Tracks</option>';
+      Object.keys(tracks).forEach(tid => {
+        const opt = document.createElement('option');
+        opt.value = tid;
+        opt.textContent = `Track #${tid} (${tracks[tid].observed_sample_count} samples)`;
+        selTrack.appendChild(opt);
+      });
+      if (selectedTrackId && tracks[selectedTrackId]) {
+        selTrack.value = selectedTrackId;
+      } else if (tracks[currentVal]) {
+        selTrack.value = currentVal;
+      } else {
+        selTrack.value = "all";
+        selectedTrackId = "all";
+      }
+    }
+
+    if (args.video_url) {
+      const sourceUrl = new URL(args.video_url, window.location.origin).href;
+      if (video.src !== sourceUrl) {
+        video.src = sourceUrl;
+        video.load();
+      }
+    } else {
+      videoStateBadge.textContent = "Video unavailable · sample exploration available";
+    }
+
+    if (acceptSeekRequest(args.seek_sample, args.seek_request_id)) {
+      seekToSample(args.seek_sample);
+    } else {
+      const targetSample = (currentSampleIdx > 0) ? currentSampleIdx : (args.seek_sample || 0);
+      seekToSample(targetSample, false);
+    }
+    checkNarrowScreenDefault();
+    renderCurrentFloorView();
+    renderCameraOverlay();
+    notifyHeight();
+  }
+});
+
+// Handshake with Streamlit
+window.parent.postMessage({
+  isStreamlitMessage: true,
+  type: "streamlit:componentReady",
+  apiVersion: 1
+}, "*");
+
+checkNarrowScreenDefault();
+notifyHeight();
+
+// Verification helper getters and action dispatchers
+window.getCurrentSampleIdx = function() { return currentSampleIdx; };
+window.getSelectedZoneId = function() { return runGeometry ? runGeometry.selected_zone_id : null; };
+window.getSelectedTrackId = function() { return selectedTrackId; };
+window.getCurrentPerspective = function() { return currentFloorPerspective; };
+window.getMaxScaleDwellSec = function() { return window._maxScaleDwellSec || 20.0; };
+window.getCamera3D = function() { return camera3D; };
+window.selectZone = selectZone;
+window.setFloorPerspective = setFloorPerspective;
+window.seekToSample = seekToSample;
+window.orbit3D = orbit3D;
+window.pan3D = pan3D;
+window.zoom3D = zoom3D;
+window.reset3DCamera = reset3DCamera;
+</script>
+
+</body>
+</html>

@@ -18,8 +18,8 @@ class TrajectoryPoint:
     track_id: int
     frame_idx: int
     timestamp_sec: float
-    image_x: float                 # Bottom-center x = (x1 + x2) / 2
-    image_y: float                 # Bottom-center y = y2
+    image_x: Optional[float] = None # Bottom-center x = (x1 + x2) / 2
+    image_y: Optional[float] = None # Bottom-center y = y2
     floor_x: Optional[float] = None # Transformed floor coordinate x
     floor_y: Optional[float] = None # Transformed floor coordinate y
     zone_id: Optional[str] = None   # Spatial zone assignment (None if outside defined zones)
@@ -71,7 +71,10 @@ class Trajectory:
         """Calculate total path length in image pixel space."""
         if len(self.points) < 2:
             return 0.0
-        pts = np.array([[p.image_x, p.image_y] for p in self.points], dtype=np.float32)
+        valid_pts = [[p.image_x, p.image_y] for p in self.points if p.image_x is not None and p.image_y is not None]
+        if len(valid_pts) < 2:
+            return 0.0
+        pts = np.array(valid_pts, dtype=np.float32)
         diffs = np.diff(pts, axis=0)
         dists = np.hypot(diffs[:, 0], diffs[:, 1])
         return round(float(np.sum(dists)), 2)
@@ -91,9 +94,10 @@ class Trajectory:
 
     def get_image_points(self) -> np.ndarray:
         """Return image-space points as (N, 2) float32 numpy array."""
-        if not self.points:
+        valid = [[p.image_x, p.image_y] for p in self.points if p.image_x is not None and p.image_y is not None]
+        if not valid:
             return np.empty((0, 2), dtype=np.float32)
-        return np.array([[p.image_x, p.image_y] for p in self.points], dtype=np.float32)
+        return np.array(valid, dtype=np.float32)
 
     def get_floor_points(self) -> np.ndarray:
         """Return floor-space points as (N, 2) float32 numpy array (skips un-transformed)."""

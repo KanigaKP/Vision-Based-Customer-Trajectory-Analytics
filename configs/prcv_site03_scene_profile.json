@@ -1,0 +1,74 @@
+{
+  "name": "PRCV Site03 Home Decor Boutique View",
+  "image_width": 896,
+  "image_height": 672,
+  "image_points": [
+    [150.0, 640.0],
+    [650.0, 640.0],
+    [580.0, 320.0],
+    [200.0, 320.0]
+  ],
+  "floor_points": [
+    [1.0, 8.0],
+    [9.0, 8.0],
+    [9.0, 1.0],
+    [1.0, 1.0]
+  ],
+  "bounds": [0.0, 10.0, 0.0, 9.0],
+  "cell_size": 0.5,
+  "zones": [
+    {
+      "zone_id": "side_display_left",
+      "name": "Left Wall Display Section",
+      "polygon": [
+        [0.5, 2.0],
+        [3.5, 2.0],
+        [3.5, 6.5],
+        [0.5, 6.5]
+      ],
+      "color": "#e67e22",
+      "description": "Left wall display shelving and rustic fixtures"
+    },
+    {
+      "zone_id": "center_aisle",
+      "name": "Central Browsing Aisle",
+      "polygon": [
+        [3.5, 2.0],
+        [5.5, 2.0],
+        [5.5, 6.5],
+        [3.5, 6.5]
+      ],
+      "color": "#2ecc71",
+      "description": "Main customer circulation walkway"
+    },
+    {
+      "zone_id": "display_table_center",
+      "name": "Center Display Table Section",
+      "polygon": [
+        [5.5, 2.0],
+        [8.5, 2.0],
+        [8.5, 6.5],
+        [5.5, 6.5]
+      ],
+      "color": "#3498db",
+      "description": "Prominent center display table featuring decor"
+    },
+    {
+      "zone_id": "checkout_counter",
+      "name": "Cashier & Service Counter",
+      "polygon": [
+        [0.5, 0.5],
+        [8.5, 0.5],
+        [8.5, 2.0],
+        [0.5, 2.0]
+      ],
+      "color": "#9b59b6",
+      "description": "Rear payment and consultation counter"
+    }
+  ],
+  "candidate_zone_ids": [
+    "side_display_left",
+    "display_table_center"
+  ],
+  "hysteresis_window": 3
+}

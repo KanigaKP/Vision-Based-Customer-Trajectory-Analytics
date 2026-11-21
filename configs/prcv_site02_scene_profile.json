@@ -1,0 +1,74 @@
+{
+  "name": "PRCV Site02 Luxury Jewelry Boutique View",
+  "image_width": 896,
+  "image_height": 672,
+  "image_points": [
+    [480.0, 650.0],
+    [750.0, 650.0],
+    [720.0, 340.0],
+    [540.0, 340.0]
+  ],
+  "floor_points": [
+    [1.0, 8.0],
+    [7.0, 8.0],
+    [7.0, 1.0],
+    [1.0, 1.0]
+  ],
+  "bounds": [0.0, 8.0, 0.0, 9.0],
+  "cell_size": 0.5,
+  "zones": [
+    {
+      "zone_id": "showcase_display_front",
+      "name": "Front Jewelry Showcase",
+      "polygon": [
+        [4.5, 4.5],
+        [7.5, 4.5],
+        [7.5, 8.5],
+        [4.5, 8.5]
+      ],
+      "color": "#f39c12",
+      "description": "Primary illuminated glass showcase counter"
+    },
+    {
+      "zone_id": "showcase_display_back",
+      "name": "Rear Jewelry Showcase",
+      "polygon": [
+        [4.5, 1.0],
+        [7.5, 1.0],
+        [7.5, 4.5],
+        [4.5, 4.5]
+      ],
+      "color": "#3498db",
+      "description": "Secondary rear jewelry showcase display"
+    },
+    {
+      "zone_id": "browsing_aisle",
+      "name": "Customer Browsing Corridor",
+      "polygon": [
+        [2.5, 1.0],
+        [4.5, 1.0],
+        [4.5, 8.5],
+        [2.5, 8.5]
+      ],
+      "color": "#2ecc71",
+      "description": "Hardwood customer walking and browsing corridor"
+    },
+    {
+      "zone_id": "entrance_foyer",
+      "name": "Entrance Foyer",
+      "polygon": [
+        [0.0, 4.5],
+        [2.5, 4.5],
+        [2.5, 8.5],
+        [0.0, 8.5]
+      ],
+      "color": "#9b59b6",
+      "description": "Store entrance threshold from concourse"
+    }
+  ],
+  "candidate_zone_ids": [
+    "showcase_display_front",
+    "showcase_display_back"
+  ],
+  "hysteresis_window": 3
+}
